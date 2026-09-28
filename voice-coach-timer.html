@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voice Coach Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #10151A;
+    --bg-panel: #1A2229;
+    --bg-panel-2: #212B33;
+    --line: rgba(255,255,255,0.09);
+    --text: #F2F1EC;
+    --text-dim: #93A0A8;
+    --work: #FF5A36;
+    --work-dim: #4A2318;
+    --rest: #2FD1B7;
+    --rest-dim: #163330;
+    --prep: #FFC94A;
+    --prep-dim: #40340F;
+    --cyclerest: #B08CFF;
+    --cyclerest-dim: #2C2440;
+    --done: #F2F1EC;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F4F3EF;
+      --bg-panel: #FFFFFF;
+      --bg-panel-2: #ECEAE4;
+      --line: rgba(0,0,0,0.09);
+      --text: #14181B;
+      --text-dim: #6B7680;
+      --work-dim: #FFE0D3;
+      --rest-dim: #D6F5EF;
+      --prep-dim: #FFF2CE;
+      --cyclerest-dim: #EAE1FF;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F3EF;
+    --bg-panel: #FFFFFF;
+    --bg-panel-2: #ECEAE4;
+    --line: rgba(0,0,0,0.09);
+    --text: #14181B;
+    --text-dim: #6B7680;
+    --work-dim: #FFE0D3;
+    --rest-dim: #D6F5EF;
+    --prep-dim: #FFF2CE;
+    --cyclerest-dim: #EAE1FF;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .numeral { font-family: 'Bebas Neue', 'Manrope', sans-serif; letter-spacing: 0.02em; }
+
+  /* ---------- Layout shells ---------- */
+  #app { min-height: 100%; display: flex; flex-direction: column; }
+  .screen { display: none; flex: 1; flex-direction: column; min-height: 100%; }
+  .screen.active { display: flex; }
+
+  /* ---------- Setup screen ---------- */
+  #setup { padding: 28px 20px calc(28px + env(safe-area-inset-bottom,0px)); max-width: 480px; margin: 0 auto; width: 100%; }
+  .brand { display:flex; align-items:baseline; gap:10px; margin-bottom: 4px; }
+  .brand .mark { width: 10px; height: 10px; border-radius: 50%; background: var(--work); flex-shrink:0; }
+  .brand h1 { font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+  .brand-sub { color: var(--text-dim); font-size: 14px; margin: 4px 0 10px; line-height: 1.5; }
+  .history-line { font-size: 12.5px; color: var(--text-dim); margin: 0 0 22px; min-height: 16px; }
+  .history-line b { color: var(--work); font-weight: 800; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display:block; font-size: 13px; font-weight: 700; color: var(--text-dim); margin-bottom: 8px; }
+  .field .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+  .field input[type="text"], .field textarea {
+    width: 100%; background: var(--bg-panel); border: 1px solid var(--line); color: var(--text);
+    border-radius: 12px; padding: 12px 14px; font-size: 15px; font-family: inherit; resize: vertical;
+  }
+  .field textarea { min-height: 64px; line-height: 1.5; }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--work); outline-offset: 1px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .stepper { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display:flex; align-items:center; justify-content:space-between; }
+  .stepper .unit { font-size: 12px; color: var(--text-dim); }
+  .stepper .val-row { display:flex; align-items:center; gap:10px; }
+  .stepper button {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-panel-2);
+    color: var(--text); font-size: 17px; font-weight: 700; display:flex; align-items:center; justify-content:center;
+  }
+  .stepper button:active { transform: scale(0.94); }
+  .stepper .val { font-family: 'Bebas Neue'; font-size: 22px; min-width: 34px; text-align:center; }
+
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; background: var(--bg-panel); border:1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+  .toggle-row .label { font-size: 14px; font-weight: 600; }
+  .toggle-row .desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .seg-control { display:flex; flex-wrap: wrap; background: var(--bg-panel); border:1px solid var(--line); border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg-btn { flex: 1 1 30%; border:none; background: transparent; color: var(--text-dim); font-family: inherit; font-size: 13px; font-weight: 700; padding: 10px 6px; border-radius: 9px; }
+  .seg-btn.active { background: var(--work); color: #1A0D08; }
+  .more-langs { background: var(--bg-panel); border:1px solid var(--line); border-radius: 12px; padding: 4px 14px 2px; margin-bottom: 18px; }
+  .more-langs summary { padding: 12px 0; font-size: 13px; font-weight: 700; color: var(--text-dim); cursor: pointer; }
+  .more-langs[open] summary { color: var(--text); }
+  .more-langs .field:last-child { margin-bottom: 16px; }
+  .backup-panel { margin-top: 16px; }
+  .btn-row { display:flex; gap:10px; margin-top:10px; }
+  .mini-btn { flex:1; padding: 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-panel-2); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; }
+  .mini-btn:active { transform: scale(0.98); }
+  .switch { position: relative; width: 44px; height: 26px; flex-shrink:0; }
+  .switch input { opacity:0; width:100%; height:100%; margin:0; position:absolute; cursor:pointer; }
+  .switch .track { position:absolute; inset:0; background: var(--bg-panel-2); border:1px solid var(--line); border-radius: 999px; transition: background .15s; }
+  .switch .thumb { position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background: var(--text-dim); transition: transform .15s, background .15s; }
+  .switch input:checked + .track { background: var(--work-dim); border-color: var(--work); }
+  .switch input:checked + .track + .thumb { transform: translateX(18px); background: var(--work); }
+
+  .cta {
+    margin-top: 8px; width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: var(--work); color: #1A0D08; font-size: 16px; font-weight: 800; letter-spacing: 0.01em;
+  }
+  .cta:active { transform: scale(0.98); }
+  .cta.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); margin-top: 12px; }
+  .summary { display:flex; gap:10px; color: var(--text-dim); font-size: 12.5px; margin: 14px 0 22px; flex-wrap: wrap; }
+  .summary span { background: var(--bg-panel); border:1px solid var(--line); border-radius: 999px; padding: 5px 11px; }
+  .history-strip { display:flex; gap:10px; justify-content:center; flex-wrap: wrap; margin: 4px 0 6px; }
+  .history-strip span { background: var(--bg-panel); border:1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; }
+  .history-strip span b { color: var(--work); font-weight: 800; }
+
+  /* ---------- Run screen ---------- */
+  #run { position: relative; padding: 14px 20px calc(20px + env(safe-area-inset-bottom,0px)); }
+  .run-top { display:flex; align-items:center; justify-content:space-between; padding-top: 6px; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-panel); color: var(--text); display:flex; align-items:center; justify-content:center; }
+  .run-title { font-size: 15px; font-weight: 700; color: var(--text-dim); text-align:center; flex:1; padding: 0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .phase-label { text-align:center; font-size: 20px; font-weight: 800; margin-top: 18px; transition: color .2s; }
+  .exercise-name { text-align:center; font-size: 15px; color: var(--text-dim); margin-top: 6px; min-height: 20px; }
+
+  .ring-wrap { position: relative; width: min(78vw, 320px); height: min(78vw, 320px); margin: 22px auto 6px; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--bg-panel-2); stroke-width: 14; }
+  .ring-fg { fill: none; stroke: var(--work); stroke-width: 14; stroke-linecap: round; transition: stroke .2s; }
+  .ring-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .time-big { font-size: 76px; line-height: 1; }
+  .next-up { text-align:center; font-size: 13px; color: var(--text-dim); margin-top: 10px; min-height: 18px; }
+
+  .stats-row { display:flex; justify-content:center; gap: 42px; margin-top: 26px; }
+  .stat { text-align:center; }
+  .stat .stat-label { font-size: 11px; letter-spacing: 0.04em; color: var(--text-dim); font-weight: 700; }
+  .stat .stat-val { font-size: 30px; margin-top: 2px; }
+
+  .controls { display:flex; align-items:center; justify-content:center; gap: 22px; margin-top: 32px; }
+  .ctrl-round { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-panel); color: var(--text); display:flex; align-items:center; justify-content:center; }
+  .ctrl-round.small { width: 46px; height: 46px; }
+  .ctrl-main { width: 78px; height: 78px; border-radius: 50%; border: none; background: var(--work); color: #1A0D08; font-size: 15px; font-weight: 800; display:flex; align-items:center; justify-content:center; }
+  .ctrl-main:active, .ctrl-round:active { transform: scale(0.94); }
+
+  .overall-bar { position: fixed; left:0; right:0; bottom: env(safe-area-inset-bottom, 0px); height: 4px; background: var(--bg-panel-2); }
+  .overall-bar-fill { height: 100%; background: var(--work); width: 0%; transition: width .3s linear, background .2s; }
+
+  .mute-note { text-align:center; font-size: 12px; color: var(--text-dim); margin-top: 18px; }
+
+  /* ---------- Done screen ---------- */
+  #done { align-items:center; justify-content:center; padding: 28px; text-align:center; }
+  #done .big-check { font-size: 52px; margin-bottom: 8px; }
+  #done h2 { font-size: 24px; margin: 8px 0 4px; }
+  #done p { color: var(--text-dim); font-size: 14px; margin: 0 0 26px; }
+  #done .cta { max-width: 280px; }
+
+  @media (max-width: 360px) {
+    .time-big { font-size: 62px; }
+    .stats-row { gap: 26px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SETUP -->
+  <section id="setup" class="screen active">
+    <div class="brand"><span class="mark"></span><h1 id="titleDisplay">Voice Coach Timer</h1></div>
+    <p class="brand-sub" id="subtitleText">Set your cues and interval times, then the voice calls out cues, times, and rest encouragement automatically.</p>
+    <div class="history-line" id="historySummary"></div>
+
+    <div class="field">
+      <label for="wname" id="wnameLabel">Workout Name</label>
+      <input type="text" id="wname" value="Core Training" maxlength="24">
+    </div>
+
+    <div class="field">
+      <label for="exercises" id="exercisesLabel">Exercise Cues (comma separated, called out in order)</label>
+      <textarea id="exercises">開合跳, 弓步蹲, 波比跳, 棒式撐體, 登山者, 深蹲跳, 側棒式, 仰臥抬腿</textarea>
+      <div class="hint" id="exercisesHint">At the start of each work set, the next cue is called out in order.</div>
+    </div>
+
+    <div class="field">
+      <label for="exercisesEn" id="exercisesEnLabel">English Cues (must match the order above, comma separated)</label>
+      <textarea id="exercisesEn">Jumping Jacks, Walking Lunges, Burpees, Plank Hold, Mountain Climbers, Jump Squats, Side Plank, Leg Raises</textarea>
+      <div class="hint" id="exercisesEnHint">Used when English is selected as the voice language.</div>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label id="stepWorkLabel">Work Seconds</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-work">－</button><span class="val" id="workVal">30</span><button data-step="work">＋</button></div>
+          <span class="unit" id="unitWork">sec</span>
+        </div>
+      </div>
+      <div class="field">
+        <label id="stepRestLabel">Rest Seconds</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-rest">－</button><span class="val" id="restVal">15</span><button data-step="rest">＋</button></div>
+          <span class="unit" id="unitRest">sec</span>
+        </div>
+      </div>
+      <div class="field">
+        <label id="stepSetsLabel">Sets per Round</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-sets">－</button><span class="val" id="setsVal">8</span><button data-step="sets">＋</button></div>
+          <span class="unit" id="unitSets">sets</span>
+        </div>
+      </div>
+      <div class="field">
+        <label id="stepCyclesLabel">Rounds</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-cycles">－</button><span class="val" id="cyclesVal">3</span><button data-step="cycles">＋</button></div>
+          <span class="unit" id="unitCycles">rounds</span>
+        </div>
+      </div>
+      <div class="field">
+        <label id="stepCyclerestLabel">Rest Between Rounds</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-cyclerest">－</button><span class="val" id="cyclerestVal">60</span><button data-step="cyclerest">＋</button></div>
+          <span class="unit" id="unitCyclerest">sec</span>
+        </div>
+      </div>
+      <div class="field">
+        <label id="stepPrepLabel">Prep Countdown</label>
+        <div class="stepper">
+          <div class="val-row"><button data-step="-prep">－</button><span class="val" id="prepVal">5</span><button data-step="prep">＋</button></div>
+          <span class="unit" id="unitPrep">sec</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div><div class="label" id="voiceLabel">Voice Cues</div><div class="desc" id="voiceDesc">Cues, countdown, encouragement</div></div>
+      <label class="switch"><input type="checkbox" id="voiceOn" checked><span class="track"></span><span class="thumb"></span></label>
+    </div>
+
+    <div class="field">
+      <label id="langLabel">Voice Language</label>
+      <div class="seg-control" id="langControl">
+        <button type="button" class="seg-btn" data-lang="zh">中文</button>
+        <button type="button" class="seg-btn" data-lang="en">English</button>
+        <button type="button" class="seg-btn" data-lang="ja">日本語</button>
+        <button type="button" class="seg-btn" data-lang="es">Español</button>
+        <button type="button" class="seg-btn" data-lang="fr">Français</button>
+        <button type="button" class="seg-btn" data-lang="ko">한국어</button>
+      </div>
+      <div class="hint" id="langHint">Cues, remaining sets/rounds, encouragement, the countdown, and the on-screen text all switch to this language.</div>
+    </div>
+
+    <div class="field">
+      <label for="encourage" id="encourageLabel">Rest Encouragement · 中文 (comma separated, spoken at random)</label>
+      <textarea id="encourage">做得很好，休息一下，撐住，你比昨天更強了，調整呼吸，準備下一組，狀態很棒，再堅持一下，喝口水，肩膀放鬆，很有節奏，就是這樣</textarea>
+    </div>
+
+    <div class="field">
+      <label for="encourageEn" id="encourageEnLabel">Rest Encouragement · English (comma separated, spoken at random)</label>
+      <textarea id="encourageEn">Great job, Take a breather, Hang in there, Stronger than yesterday, Breathe deep, Get ready for the next set, Looking strong, Almost there, Grab some water, Relax those shoulders, Nice rhythm, That's it</textarea>
+    </div>
+
+    <details class="more-langs">
+      <summary id="moreLangsSummary">More languages (日本語 / Español / Français / 한국어 — optional, falls back to English if blank)</summary>
+
+      <div class="field">
+        <label for="exercisesJa" id="exercisesJaLabel">Exercise Cues · 日本語 (must match the order above, comma separated)</label>
+        <textarea id="exercisesJa">ジャンピングジャック, ウォーキングランジ, バーピー, プランク, マウンテンクライマー, ジャンプスクワット, サイドプランク, レッグレイズ</textarea>
+      </div>
+      <div class="field">
+        <label for="encourageJa" id="encourageJaLabel">Rest Encouragement · 日本語 (comma separated, spoken at random)</label>
+        <textarea id="encourageJa">よくできました, 一息つきましょう, 頑張って, 昨日より強くなってる, 深呼吸して, 次のセットの準備を, 調子いいよ, もう少し, 水分補給して, 肩の力を抜いて, いいリズム, その調子</textarea>
+      </div>
+
+      <div class="field">
+        <label for="exercisesEs" id="exercisesEsLabel">Exercise Cues · Español (must match the order above, comma separated)</label>
+        <textarea id="exercisesEs">Saltos de tijera, Zancadas caminando, Burpees, Plancha, Escaladores, Sentadillas con salto, Plancha lateral, Elevaciones de piernas</textarea>
+      </div>
+      <div class="field">
+        <label for="encourageEs" id="encourageEsLabel">Rest Encouragement · Español (comma separated, spoken at random)</label>
+        <textarea id="encourageEs">Muy bien hecho, Respira un momento, Aguanta, Más fuerte que ayer, Respira profundo, Prepárate para la siguiente serie, Te ves fuerte, Ya casi, Bebe agua, Relaja los hombros, Buen ritmo, Así se hace</textarea>
+      </div>
+
+      <div class="field">
+        <label for="exercisesFr" id="exercisesFrLabel">Exercise Cues · Français (must match the order above, comma separated)</label>
+        <textarea id="exercisesFr">Jumping jacks, Fentes marchées, Burpees, Planche, Grimpeurs, Squats sautés, Planche latérale, Relevés de jambes</textarea>
+      </div>
+      <div class="field">
+        <label for="encourageFr" id="encourageFrLabel">Rest Encouragement · Français (comma separated, spoken at random)</label>
+        <textarea id="encourageFr">Très bien joué, Reprends ton souffle, Tiens bon, Plus fort qu'hier, Respire profondément, Prépare-toi pour la prochaine série, Ça a l'air solide, Presque fini, Bois de l'eau, Détends les épaules, Bon rythme, Voilà comme ça</textarea>
+      </div>
+
+      <div class="field">
+        <label for="exercisesKo" id="exercisesKoLabel">Exercise Cues · 한국어 (must match the order above, comma separated)</label>
+        <textarea id="exercisesKo">점핑잭, 워킹 런지, 버피, 플랭크, 마운틴 클라이머, 점프 스쿼트, 사이드 플랭크, 레그 레이즈</textarea>
+      </div>
+      <div class="field">
+        <label for="encourageKo" id="encourageKoLabel">Rest Encouragement · 한국어 (comma separated, spoken at random)</label>
+        <textarea id="encourageKo">잘하고 있어요, 잠깐 숨 고르세요, 조금만 더 버텨요, 어제보다 강해졌어요, 심호흡하세요, 다음 세트 준비하세요, 컨디션 좋아 보여요, 거의 다 왔어요, 물 한 모금 하세요, 어깨에 힘 빼세요, 리듬이 좋아요, 바로 그거예요</textarea>
+      </div>
+    </details>
+
+    <div class="summary" id="summaryLine"></div>
+
+    <button class="cta" id="startBtn">Start Workout</button>
+    <details class="more-langs backup-panel" id="backupPanel">
+      <summary>Backup &amp; Restore (English only)</summary>
+      <div class="field">
+        <div class="hint">Your workout log is stored only on this device. Export it to keep a copy (for example, email it to yourself). Import it to restore on a new phone.</div>
+        <textarea id="backupBox" spellcheck="false" placeholder="Export fills this box. To import, paste a backup here."></textarea>
+        <div class="btn-row">
+          <button type="button" class="mini-btn" id="exportBtn">Export</button>
+          <button type="button" class="mini-btn" id="importBtn">Import</button>
+        </div>
+        <div class="hint" id="backupStatus" role="status"></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- RUN -->
+  <section id="run" class="screen">
+    <div class="run-top">
+      <button class="icon-btn" id="exitBtn" aria-label="結束">✕</button>
+      <div class="run-title" id="runTitle">核心訓練</div>
+      <button class="icon-btn" id="muteBtn" aria-label="靜音">🔊</button>
+    </div>
+
+    <div class="phase-label" id="phaseLabel">準備</div>
+    <div class="exercise-name" id="exerciseLabel">&nbsp;</div>
+
+    <div class="ring-wrap">
+      <svg viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="88"></circle>
+        <circle class="ring-fg" id="ringFg" cx="100" cy="100" r="88" stroke-dasharray="553" stroke-dashoffset="553"></circle>
+      </svg>
+      <div class="ring-center">
+        <div class="time-big numeral" id="timeBig">00:05</div>
+      </div>
+    </div>
+    <div class="next-up" id="nextUp">&nbsp;</div>
+
+    <div class="stats-row">
+      <div class="stat"><div class="stat-label" id="setsLeftLabel">剩餘組數</div><div class="stat-val numeral" id="setsLeft">–</div></div>
+      <div class="stat"><div class="stat-label" id="cyclesLeftLabel">剩餘輪數</div><div class="stat-val numeral" id="cyclesLeft">–</div></div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-round small" id="prevBtn" aria-label="上一階段">⏮</button>
+      <button class="ctrl-main" id="playPauseBtn">暫停</button>
+      <button class="ctrl-round small" id="nextBtn" aria-label="下一階段">⏭</button>
+    </div>
+    <div class="mute-note" id="voiceNote">語音提示：開啟</div>
+  </section>
+
+  <!-- DONE -->
+  <section id="done" class="screen">
+    <div class="big-check">✓</div>
+    <h2 id="doneTitle">Workout Complete</h2>
+    <p id="doneSummary">Nice work.</p>
+    <div class="history-strip" id="historyStrip"></div>
+    <button class="cta" id="restartBtn">Back to Setup</button>
+    <button class="cta secondary" id="shareBtn">Share Result</button>
+    <button class="cta secondary" id="briefBtn">Share Brief (English)</button>
+  </section>
+
+  <div class="overall-bar"><div class="overall-bar-fill" id="overallFill"></div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Persisted settings ---------------- */
+  var DEFAULTS = { name:"Core Training", exercises:"開合跳, 弓步蹲, 波比跳, 棒式撐體, 登山者, 深蹲跳, 側棒式, 仰臥抬腿",
+    exercisesEn:"Jumping Jacks, Walking Lunges, Burpees, Plank Hold, Mountain Climbers, Jump Squats, Side Plank, Leg Raises",
+    exercisesJa:"ジャンピングジャック, ウォーキングランジ, バーピー, プランク, マウンテンクライマー, ジャンプスクワット, サイドプランク, レッグレイズ",
+    exercisesEs:"Saltos de tijera, Zancadas caminando, Burpees, Plancha, Escaladores, Sentadillas con salto, Plancha lateral, Elevaciones de piernas",
+    exercisesFr:"Jumping jacks, Fentes marchées, Burpees, Planche, Grimpeurs, Squats sautés, Planche latérale, Relevés de jambes",
+    exercisesKo:"점핑잭, 워킹 런지, 버피, 플랭크, 마운틴 클라이머, 점프 스쿼트, 사이드 플랭크, 레그 레이즈",
+    work:30, rest:15, sets:8, cycles:3, cyclerest:60, prep:5, voice:true, lang:"en",
+    encourage:"做得很好, 休息一下, 撐住, 你比昨天更強了, 調整呼吸, 準備下一組, 狀態很棒, 再堅持一下, 喝口水, 肩膀放鬆, 很有節奏, 就是這樣",
+    encourageEn:"Great job, Take a breather, Hang in there, Stronger than yesterday, Breathe deep, Get ready for the next set, Looking strong, Almost there, Grab some water, Relax those shoulders, Nice rhythm, That's it",
+    encourageJa:"よくできました, 一息つきましょう, 頑張って, 昨日より強くなってる, 深呼吸して, 次のセットの準備を, 調子いいよ, もう少し, 水分補給して, 肩の力を抜いて, いいリズム, その調子",
+    encourageEs:"Muy bien hecho, Respira un momento, Aguanta, Más fuerte que ayer, Respira profundo, Prepárate para la siguiente serie, Te ves fuerte, Ya casi, Bebe agua, Relaja los hombros, Buen ritmo, Así se hace",
+    encourageFr:"Très bien joué, Reprends ton souffle, Tiens bon, Plus fort qu'hier, Respire profondément, Prépare-toi pour la prochaine série, Ça a l'air solide, Presque fini, Bois de l'eau, Détends les épaules, Bon rythme, Voilà comme ça",
+    encourageKo:"잘하고 있어요, 잠깐 숨 고르세요, 조금만 더 버텨요, 어제보다 강해졌어요, 심호흡하세요, 다음 세트 준비하세요, 컨디션 좋아 보여요, 거의 다 왔어요, 물 한 모금 하세요, 어깨에 힘 빼세요, 리듬이 좋아요, 바로 그거예요" };
+  var settings = Object.assign({}, DEFAULTS);
+  try {
+    var saved = localStorage.getItem("intervalTimerSettings");
+    if (saved) settings = Object.assign({}, DEFAULTS, JSON.parse(saved));
+  } catch(e) {}
+
+  function saveSettings(){
+    try { localStorage.setItem("intervalTimerSettings", JSON.stringify(settings)); } catch(e) {}
+  }
+
+  /* ---------------- Setup screen wiring ---------------- */
+  var $ = function(id){ return document.getElementById(id); };
+
+  $("wname").value = settings.name;
+  $("exercises").value = settings.exercises;
+  $("exercisesEn").value = settings.exercisesEn;
+  $("exercisesJa").value = settings.exercisesJa;
+  $("exercisesEs").value = settings.exercisesEs;
+  $("exercisesFr").value = settings.exercisesFr;
+  $("exercisesKo").value = settings.exercisesKo;
+  $("encourage").value = settings.encourage;
+  $("encourageEn").value = settings.encourageEn;
+  $("encourageJa").value = settings.encourageJa;
+  $("encourageEs").value = settings.encourageEs;
+  $("encourageFr").value = settings.encourageFr;
+  $("encourageKo").value = settings.encourageKo;
+  $("voiceOn").checked = !!settings.voice;
+
+  function refreshLangButtons(){
+    document.querySelectorAll(".seg-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-lang") === settings.lang);
+    });
+  }
+  refreshLangButtons();
+  document.querySelectorAll(".seg-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      settings.lang = btn.getAttribute("data-lang");
+      refreshLangButtons();
+      applySetupUiText();
+      updateSummary();
+      refreshHistorySummary();
+      saveSettings();
+    });
+  });
+
+  var steppers = { work:{min:5,max:600,step:5}, rest:{min:0,max:300,step:5}, sets:{min:1,max:30,step:1},
+    cycles:{min:1,max:20,step:1}, cyclerest:{min:0,max:600,step:5}, prep:{min:0,max:30,step:1} };
+  function refreshSteppers(){
+    Object.keys(steppers).forEach(function(k){ $(k+"Val").textContent = settings[k]; });
+  }
+  refreshSteppers();
+
+  document.querySelectorAll("[data-step]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var d = btn.getAttribute("data-step");
+      var neg = d.charAt(0) === "-";
+      var key = neg ? d.slice(1) : d;
+      var cfg = steppers[key];
+      var delta = neg ? -cfg.step : cfg.step;
+      settings[key] = Math.min(cfg.max, Math.max(cfg.min, settings[key] + delta));
+      refreshSteppers();
+      updateSummary();
+      saveSettings();
+    });
+  });
+
+  var TEXT_FIELD_IDS = ["wname","exercises","exercisesEn","exercisesJa","exercisesEs","exercisesFr","exercisesKo",
+    "encourage","encourageEn","encourageJa","encourageEs","encourageFr","encourageKo"];
+  TEXT_FIELD_IDS.forEach(function(id){
+    $(id).addEventListener("input", function(){
+      settings.name = $("wname").value.trim() || DEFAULTS.name;
+      TEXT_FIELD_IDS.forEach(function(fid){ if (fid !== "wname") settings[fid] = $(fid).value; });
+      $("titleDisplay").textContent = settings.name || setupText().appTitle;
+      updateSummary();
+      saveSettings();
+    });
+  });
+  $("voiceOn").addEventListener("change", function(){
+    settings.voice = $("voiceOn").checked;
+    saveSettings();
+  });
+
+  function fmtMin(sec){
+    var totalSets = settings.sets * settings.cycles;
+    var totalWork = totalSets * settings.work;
+    var totalRest = Math.max(0, totalSets - 1) * settings.rest - (settings.cycles - 1) * settings.rest; // rough
+    var betweenCycle = Math.max(0, settings.cycles - 1) * settings.cyclerest;
+    var restWithinCycles = settings.cycles * Math.max(0, settings.sets - 1) * settings.rest;
+    var total = settings.prep + totalWork + restWithinCycles + betweenCycle;
+    return Math.round(total/60);
+  }
+  function updateSummary(){
+    var mins = fmtMin();
+    var totalSets = settings.sets * settings.cycles;
+    var t = setupText();
+    $("summaryLine").innerHTML =
+      "<span>" + t.summaryMin(mins) + "</span>" +
+      "<span>" + t.summarySets(totalSets) + "</span>" +
+      "<span>" + t.summaryCycles(settings.cycles, settings.sets) + "</span>";
+  }
+
+  /* ---------------- Setup-screen text (localizes the setup screen itself) ---------------- */
+  var SETUP_UI = {
+    zh: { appTitle:"語音教練計時器",
+          subtitle:"設定訓練口令與間歇時間，開始後由語音自動喊口令、報時、休息鼓勵 — 教練不用再一直看錶。",
+          wnameLabel:"訓練名稱", exercisesLabel:"動作口令（用逗號分開，依序輪流喊）",
+          exercisesHint:"每組運動開始時，會依序喊出下一個口令；動作數不夠會自動循環，剛好 8 個對應 8 組就是一輪不重複的循環訓練。",
+          exercisesEnLabel:"英文口令 · English（順序需與上面一致，用逗號分開）",
+          exercisesEnHint:"選擇 English 作為語音語言時，會用這份清單播報動作名稱。",
+          stepWork:"運動秒數", stepRest:"休息秒數", stepSets:"每輪組數", stepCycles:"輪數", stepCyclerest:"輪間休息", stepPrep:"準備倒數",
+          unitSec:"秒", unitSet:"組", unitCycle:"輪",
+          voiceLabel:"語音提示", voiceDesc:"喊口令、倒數、鼓勵語",
+          langLabel:"語音語言", langHint:"口令、剩餘組數／輪數、鼓勵語、倒數，以及開始訓練後畫面上的文字，都會切換成這個語言。",
+          encourageLabel:"休息鼓勵語 · 中文（用逗號分開，隨機播放）", encourageEnLabel:"休息鼓勵語 · English（用逗號分開，隨機播放）",
+          moreLangsSummary:"更多語言（日本語 / Español / Français / 한국어，可留空，留空時自動用英文代替）",
+          exercisesJaLabel:"動作口令 · 日本語（順序需與最上面的動作一致，用逗號分開）", encourageJaLabel:"休息鼓勵語 · 日本語（用逗號分開，隨機播放）",
+          exercisesEsLabel:"動作口令 · Español（順序需與最上面的動作一致，用逗號分開）", encourageEsLabel:"休息鼓勵語 · Español（用逗號分開，隨機播放）",
+          exercisesFrLabel:"動作口令 · Français（順序需與最上面的動作一致，用逗號分開）", encourageFrLabel:"休息鼓勵語 · Français（用逗號分開，隨機播放）",
+          exercisesKoLabel:"動作口令 · 한국어（順序需與最上面的動作一致，用逗號分開）", encourageKoLabel:"休息鼓勵語 · 한국어（用逗號分開，隨機播放）",
+          startBtn:"開始訓練",
+          summaryMin:function(m){ return "約 " + m + " 分鐘"; }, summarySets:function(n){ return "共 " + n + " 組"; },
+          summaryCycles:function(c,s){ return c + " 輪 × " + s + " 組"; } },
+    en: { appTitle:"Voice Coach Timer",
+          subtitle:"Set your cues and interval times, then the voice calls out cues, times, and rest encouragement automatically — the coach doesn't have to watch a stopwatch.",
+          wnameLabel:"Workout Name", exercisesLabel:"Exercise Cues (comma separated, called out in order)",
+          exercisesHint:"At the start of each work set, the next cue in this list is called out; if there aren't enough entries it repeats. 8 entries for 8 sets makes one non-repeating round.",
+          exercisesEnLabel:"English Cues (must match the order above, comma separated)",
+          exercisesEnHint:"Used to speak exercise names when English is selected as the voice language.",
+          stepWork:"Work Seconds", stepRest:"Rest Seconds", stepSets:"Sets per Round", stepCycles:"Rounds", stepCyclerest:"Rest Between Rounds", stepPrep:"Prep Countdown",
+          unitSec:"sec", unitSet:"sets", unitCycle:"rounds",
+          voiceLabel:"Voice Cues", voiceDesc:"Cues, countdown, encouragement",
+          langLabel:"Voice Language", langHint:"Cues, remaining sets/rounds, encouragement, the countdown, and the on-screen text once the workout starts all switch to this language.",
+          encourageLabel:"Rest Encouragement · 中文 (comma separated, spoken at random)", encourageEnLabel:"Rest Encouragement · English (comma separated, spoken at random)",
+          moreLangsSummary:"More languages (日本語 / Español / Français / 한국어 — optional, falls back to English if left blank)",
+          exercisesJaLabel:"Exercise Cues · 日本語 (must match the order above, comma separated)", encourageJaLabel:"Rest Encouragement · 日本語 (comma separated, spoken at random)",
+          exercisesEsLabel:"Exercise Cues · Español (must match the order above, comma separated)", encourageEsLabel:"Rest Encouragement · Español (comma separated, spoken at random)",
+          exercisesFrLabel:"Exercise Cues · Français (must match the order above, comma separated)", encourageFrLabel:"Rest Encouragement · Français (comma separated, spoken at random)",
+          exercisesKoLabel:"Exercise Cues · 한국어 (must match the order above, comma separated)", encourageKoLabel:"Rest Encouragement · 한국어 (comma separated, spoken at random)",
+          startBtn:"Start Workout",
+          summaryMin:function(m){ return "~" + m + " min"; }, summarySets:function(n){ return n + " sets total"; },
+          summaryCycles:function(c,s){ return c + " rounds × " + s + " sets"; } },
+    ja: { appTitle:"音声コーチタイマー",
+          subtitle:"掛け声とインターバル時間を設定すると、開始後は音声が自動で掛け声・時間・休憩の応援を読み上げます — コーチはずっと時計を見ていなくても大丈夫。",
+          wnameLabel:"トレーニング名", exercisesLabel:"動作の掛け声（カンマ区切り、順番に読み上げ）",
+          exercisesHint:"各セット開始時に次の掛け声を順番に読み上げます。数が足りない場合は繰り返します。8個で8セットなら1周が重複なしになります。",
+          exercisesEnLabel:"英語の掛け声 · English（上と同じ順番、カンマ区切り）",
+          exercisesEnHint:"音声言語で English を選んだときに使われます。",
+          stepWork:"運動秒数", stepRest:"休憩秒数", stepSets:"1周のセット数", stepCycles:"周回数", stepCyclerest:"周回間の休憩", stepPrep:"準備カウントダウン",
+          unitSec:"秒", unitSet:"セット", unitCycle:"周",
+          voiceLabel:"音声案内", voiceDesc:"掛け声・カウントダウン・応援",
+          langLabel:"音声言語", langHint:"掛け声、残りセット数／周回数、応援、カウントダウン、開始後の画面表示がすべてこの言語になります。",
+          encourageLabel:"休憩の応援 · 中文（カンマ区切り、ランダム再生）", encourageEnLabel:"休憩の応援 · English（カンマ区切り、ランダム再生）",
+          moreLangsSummary:"その他の言語（日本語 / Español / Français / 한국어、空欄可、空欄の場合は英語で代替）",
+          exercisesJaLabel:"動作の掛け声 · 日本語（上と同じ順番、カンマ区切り）", encourageJaLabel:"休憩の応援 · 日本語（カンマ区切り、ランダム再生）",
+          exercisesEsLabel:"動作の掛け声 · Español（上と同じ順番、カンマ区切り）", encourageEsLabel:"休憩の応援 · Español（カンマ区切り、ランダム再生）",
+          exercisesFrLabel:"動作の掛け声 · Français（上と同じ順番、カンマ区切り）", encourageFrLabel:"休憩の応援 · Français（カンマ区切り、ランダム再生）",
+          exercisesKoLabel:"動作の掛け声 · 한국어（上と同じ順番、カンマ区切り）", encourageKoLabel:"休憩の応援 · 한국어（カンマ区切り、ランダム再生）",
+          startBtn:"トレーニング開始",
+          summaryMin:function(m){ return "約" + m + "分"; }, summarySets:function(n){ return "合計" + n + "セット"; },
+          summaryCycles:function(c,s){ return c + "周 × " + s + "セット"; } },
+    es: { appTitle:"Temporizador con Coach de Voz",
+          subtitle:"Configura las señales y los tiempos de intervalo; al empezar, la voz avisa automáticamente las señales, el tiempo y el ánimo en los descansos — el coach no tiene que mirar el cronómetro todo el rato.",
+          wnameLabel:"Nombre del entrenamiento", exercisesLabel:"Señales de ejercicio (separadas por comas, se dicen en orden)",
+          exercisesHint:"Al empezar cada serie se dice la siguiente señal de la lista; si no hay suficientes, se repiten. 8 señales para 8 series hacen una ronda sin repetir.",
+          exercisesEnLabel:"Señales en inglés · English (mismo orden que arriba, separadas por comas)",
+          exercisesEnHint:"Se usa cuando el idioma de voz es English.",
+          stepWork:"Segundos de trabajo", stepRest:"Segundos de descanso", stepSets:"Series por ronda", stepCycles:"Rondas", stepCyclerest:"Descanso entre rondas", stepPrep:"Cuenta atrás inicial",
+          unitSec:"s", unitSet:"series", unitCycle:"rondas",
+          voiceLabel:"Avisos de voz", voiceDesc:"Señales, cuenta atrás, ánimo",
+          langLabel:"Idioma de voz", langHint:"Las señales, series/rondas restantes, el ánimo, la cuenta atrás y el texto en pantalla al empezar cambiarán a este idioma.",
+          encourageLabel:"Ánimo de descanso · 中文 (separado por comas, al azar)", encourageEnLabel:"Ánimo de descanso · English (separado por comas, al azar)",
+          moreLangsSummary:"Más idiomas (日本語 / Español / Français / 한국어 — opcional, si se deja vacío se usa inglés)",
+          exercisesJaLabel:"Señales de ejercicio · 日本語 (mismo orden que arriba, separadas por comas)", encourageJaLabel:"Ánimo de descanso · 日本語 (separado por comas, al azar)",
+          exercisesEsLabel:"Señales de ejercicio · Español (mismo orden que arriba, separadas por comas)", encourageEsLabel:"Ánimo de descanso · Español (separado por comas, al azar)",
+          exercisesFrLabel:"Señales de ejercicio · Français (mismo orden que arriba, separadas por comas)", encourageFrLabel:"Ánimo de descanso · Français (separado por comas, al azar)",
+          exercisesKoLabel:"Señales de ejercicio · 한국어 (mismo orden que arriba, separadas por comas)", encourageKoLabel:"Ánimo de descanso · 한국어 (separado por comas, al azar)",
+          startBtn:"Empezar entrenamiento",
+          summaryMin:function(m){ return "~" + m + " min"; }, summarySets:function(n){ return n + " series en total"; },
+          summaryCycles:function(c,s){ return c + " rondas × " + s + " series"; } },
+    fr: { appTitle:"Minuteur Coach Vocal",
+          subtitle:"Configure les consignes et les temps d'intervalle ; une fois lancé, la voix annonce automatiquement les consignes, le temps et des encouragements pendant le repos — le coach n'a plus besoin de regarder le chrono en permanence.",
+          wnameLabel:"Nom de l'entraînement", exercisesLabel:"Consignes d'exercice (séparées par des virgules, annoncées dans l'ordre)",
+          exercisesHint:"Au début de chaque série, la consigne suivante de cette liste est annoncée ; si la liste est trop courte, elle recommence. 8 consignes pour 8 séries donnent un tour sans répétition.",
+          exercisesEnLabel:"Consignes en anglais · English (même ordre que ci-dessus, séparées par des virgules)",
+          exercisesEnHint:"Utilisé quand English est choisi comme langue vocale.",
+          stepWork:"Secondes de travail", stepRest:"Secondes de repos", stepSets:"Séries par tour", stepCycles:"Tours", stepCyclerest:"Repos entre les tours", stepPrep:"Décompte de préparation",
+          unitSec:"s", unitSet:"séries", unitCycle:"tours",
+          voiceLabel:"Indications vocales", voiceDesc:"Consignes, décompte, encouragements",
+          langLabel:"Langue vocale", langHint:"Les consignes, séries/tours restants, encouragements, le décompte et le texte affiché après le lancement passeront tous dans cette langue.",
+          encourageLabel:"Encouragement au repos · 中文 (séparé par des virgules, lu au hasard)", encourageEnLabel:"Encouragement au repos · English (séparé par des virgules, lu au hasard)",
+          moreLangsSummary:"Autres langues (日本語 / Español / Français / 한국어 — facultatif, l'anglais est utilisé si laissé vide)",
+          exercisesJaLabel:"Consignes d'exercice · 日本語 (même ordre que ci-dessus, séparées par des virgules)", encourageJaLabel:"Encouragement au repos · 日本語 (séparé par des virgules, lu au hasard)",
+          exercisesEsLabel:"Consignes d'exercice · Español (même ordre que ci-dessus, séparées par des virgules)", encourageEsLabel:"Encouragement au repos · Español (séparé par des virgules, lu au hasard)",
+          exercisesFrLabel:"Consignes d'exercice · Français (même ordre que ci-dessus, séparées par des virgules)", encourageFrLabel:"Encouragement au repos · Français (séparé par des virgules, lu au hasard)",
+          exercisesKoLabel:"Consignes d'exercice · 한국어 (même ordre que ci-dessus, séparées par des virgules)", encourageKoLabel:"Encouragement au repos · 한국어 (séparé par des virgules, lu au hasard)",
+          startBtn:"Démarrer l'entraînement",
+          summaryMin:function(m){ return "~" + m + " min"; }, summarySets:function(n){ return n + " séries au total"; },
+          summaryCycles:function(c,s){ return c + " tours × " + s + " séries"; } },
+    ko: { appTitle:"보이스 코치 타이머",
+          subtitle:"구호와 인터벌 시간을 설정하면, 시작 후 음성이 자동으로 구호·시간·휴식 응원을 읽어줍니다 — 코치가 계속 시계를 볼 필요가 없어요.",
+          wnameLabel:"운동 이름", exercisesLabel:"동작 구호 (쉼표로 구분, 순서대로 호출)",
+          exercisesHint:"각 세트 시작 시 목록의 다음 구호를 순서대로 부릅니다. 개수가 부족하면 반복됩니다. 8개면 8세트가 한 바퀴 동안 겹치지 않아요.",
+          exercisesEnLabel:"영어 구호 · English (위와 같은 순서, 쉼표로 구분)",
+          exercisesEnHint:"음성 언어를 English로 선택했을 때 사용됩니다.",
+          stepWork:"운동 시간(초)", stepRest:"휴식 시간(초)", stepSets:"라운드당 세트 수", stepCycles:"라운드 수", stepCyclerest:"라운드 간 휴식", stepPrep:"준비 카운트다운",
+          unitSec:"초", unitSet:"세트", unitCycle:"라운드",
+          voiceLabel:"음성 안내", voiceDesc:"구호, 카운트다운, 응원",
+          langLabel:"음성 언어", langHint:"구호, 남은 세트/라운드, 응원, 카운트다운, 시작 후 화면 텍스트가 모두 이 언어로 바뀝니다.",
+          encourageLabel:"휴식 응원 · 中文 (쉼표로 구분, 무작위 재생)", encourageEnLabel:"휴식 응원 · English (쉼표로 구분, 무작위 재생)",
+          moreLangsSummary:"추가 언어 (日本語 / Español / Français / 한국어 — 비워두면 영어로 대체)",
+          exercisesJaLabel:"동작 구호 · 日本語 (위와 같은 순서, 쉼표로 구분)", encourageJaLabel:"휴식 응원 · 日本語 (쉼표로 구분, 무작위 재생)",
+          exercisesEsLabel:"동작 구호 · Español (위와 같은 순서, 쉼표로 구분)", encourageEsLabel:"휴식 응원 · Español (쉼표로 구분, 무작위 재생)",
+          exercisesFrLabel:"동작 구호 · Français (위와 같은 순서, 쉼표로 구분)", encourageFrLabel:"휴식 응원 · Français (쉼표로 구분, 무작위 재생)",
+          exercisesKoLabel:"동작 구호 · 한국어 (위와 같은 순서, 쉼표로 구분)", encourageKoLabel:"휴식 응원 · 한국어 (쉼표로 구분, 무작위 재생)",
+          startBtn:"운동 시작",
+          summaryMin:function(m){ return "약 " + m + "분"; }, summarySets:function(n){ return "총 " + n + "세트"; },
+          summaryCycles:function(c,s){ return c + "라운드 × " + s + "세트"; } }
+  };
+  function setupText(){ return SETUP_UI[settings.lang] || SETUP_UI.en; }
+
+  function applySetupUiText(){
+    var t = setupText();
+    $("subtitleText").textContent = t.subtitle;
+    $("wnameLabel").textContent = t.wnameLabel;
+    $("exercisesLabel").textContent = t.exercisesLabel;
+    $("exercisesHint").textContent = t.exercisesHint;
+    $("exercisesEnLabel").textContent = t.exercisesEnLabel;
+    $("exercisesEnHint").textContent = t.exercisesEnHint;
+    $("stepWorkLabel").textContent = t.stepWork;
+    $("stepRestLabel").textContent = t.stepRest;
+    $("stepSetsLabel").textContent = t.stepSets;
+    $("stepCyclesLabel").textContent = t.stepCycles;
+    $("stepCyclerestLabel").textContent = t.stepCyclerest;
+    $("stepPrepLabel").textContent = t.stepPrep;
+    $("unitWork").textContent = t.unitSec;
+    $("unitRest").textContent = t.unitSec;
+    $("unitCyclerest").textContent = t.unitSec;
+    $("unitPrep").textContent = t.unitSec;
+    $("unitSets").textContent = t.unitSet;
+    $("unitCycles").textContent = t.unitCycle;
+    $("voiceLabel").textContent = t.voiceLabel;
+    $("voiceDesc").textContent = t.voiceDesc;
+    $("langLabel").textContent = t.langLabel;
+    $("langHint").textContent = t.langHint;
+    $("encourageLabel").textContent = t.encourageLabel;
+    $("encourageEnLabel").textContent = t.encourageEnLabel;
+    $("moreLangsSummary").textContent = t.moreLangsSummary;
+    $("exercisesJaLabel").textContent = t.exercisesJaLabel;
+    $("encourageJaLabel").textContent = t.encourageJaLabel;
+    $("exercisesEsLabel").textContent = t.exercisesEsLabel;
+    $("encourageEsLabel").textContent = t.encourageEsLabel;
+    $("exercisesFrLabel").textContent = t.exercisesFrLabel;
+    $("encourageFrLabel").textContent = t.encourageFrLabel;
+    $("exercisesKoLabel").textContent = t.exercisesKoLabel;
+    $("encourageKoLabel").textContent = t.encourageKoLabel;
+    $("startBtn").textContent = t.startBtn;
+    if (!settings.name || settings.name === "Core Training" || settings.name === "核心訓練") {
+      $("titleDisplay").textContent = t.appTitle;
+    }
+  }
+
+  /* ---------------- Check-in history (personal, stored on this device only) ---------------- */
+  var HISTORY_KEY = "intervalTimerHistory";
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  var APP_VERSION = "0.3.0";
+  var SCHEMA_VERSION = 1;   // bump when the saved record shape changes, and add a migration below
+  var VALID_LANGS = ["zh","en","ja","es","fr","ko"];   // declared here (not later) so it exists during the initial render
+  var MAX_IMPORT_CHARS = 2000000;
+  var MAX_SESSIONS = 5000;
+
+  function clampInt(v, min, max, fallback){
+    var n = Math.round(Number(v));
+    if (!isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  }
+  function dateFromTs(ts){
+    var d = new Date(ts);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  // One place that decides what a valid saved workout looks like. Old records (no id / no
+  // settings snapshot) are upgraded here, and imported backups are sanitized here too.
+  function normalizeRecord(r){
+    if (!r || typeof r !== "object") return null;
+    var ts = Number(r.ts);
+    if (!isFinite(ts) || ts <= 0) return null;
+    var date = (typeof r.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.date)) ? r.date : dateFromTs(ts);
+    var lang = VALID_LANGS.indexOf(r.lang) >= 0 ? r.lang : "en";
+    return {
+      v: SCHEMA_VERSION,
+      id: (typeof r.id === "string" && r.id.length <= 60) ? r.id : ("s" + Math.round(ts)),
+      ts: Math.round(ts),
+      startTs: isFinite(Number(r.startTs)) && Number(r.startTs) > 0 ? Math.round(Number(r.startTs)) : Math.round(ts),
+      date: date,
+      name: String(r.name == null ? "" : r.name).slice(0, 60),
+      totalSets: clampInt(r.totalSets, 0, 1000, 0),
+      cycles: clampInt(r.cycles, 0, 100, 0),
+      sets: clampInt(r.sets, 0, 100, 0),
+      workSec: clampInt(r.workSec, 0, 3600, 0),
+      restSec: clampInt(r.restSec, 0, 3600, 0),
+      cycleRestSec: clampInt(r.cycleRestSec, 0, 3600, 0),
+      activeSec: clampInt(r.activeSec, 0, 86400, 0),
+      lang: lang,
+      app: String(r.app == null ? "" : r.app).slice(0, 16)
+    };
+  }
+  function loadHistory(){
+    try {
+      var raw = localStorage.getItem(HISTORY_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) return [];
+      return list.map(normalizeRecord).filter(Boolean);
+    } catch(e) { return []; }
+  }
+  function saveHistoryList(list){
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch(e) {}
+  }
+  function computeStreak(history){
+    var days = {};
+    history.forEach(function(r){ days[r.date] = true; });
+    var streak = 0;
+    var d = new Date();
+    while (true){
+      var key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+      if (days[key]) { streak++; d.setDate(d.getDate() - 1); } else break;
+    }
+    return streak;
+  }
+  function logSession(totalSets){
+    var history = loadHistory();
+    var now = Date.now();
+    var rec = normalizeRecord({
+      id: "s" + now + "-" + Math.floor(Math.random() * 9000 + 1000),
+      ts: now, startTs: sessionStartTs, name: settings.name, totalSets: totalSets,
+      cycles: settings.cycles, sets: settings.sets,
+      workSec: settings.work, restSec: settings.rest, cycleRestSec: settings.cyclerest,
+      activeSec: totalSets * settings.work, lang: settings.lang, app: APP_VERSION
+    });
+    history.push(rec);
+    saveHistoryList(history);
+    return { history: history, record: rec };
+  }
+
+  /* ---------- English-only brief + backup (saved/exported content is always English) ---------- */
+  function fmtActive(sec){
+    return sec < 60 ? (sec + " sec") : (Math.round(sec / 60) + " min");
+  }
+  function plural(n, one, many){ return n + " " + (n === 1 ? one : many); }
+  function buildBrief(rec, history){
+    var streak = computeStreak(history);
+    var allSets = history.reduce(function(s,r){ return s + r.totalSets; }, 0);
+    var lines = [
+      "Voice Coach Timer - Session Brief",
+      "Date: " + rec.date,
+      "Workout: " + (rec.name || "Workout"),
+      "Completed: " + plural(rec.cycles, "round", "rounds") + " x " + plural(rec.sets, "set", "sets") + " = " + plural(rec.totalSets, "set", "sets"),
+      "Work / Rest: " + rec.workSec + "s / " + rec.restSec + "s" + (rec.cycleRestSec ? " (round rest " + rec.cycleRestSec + "s)" : ""),
+      "Active work time: " + fmtActive(rec.activeSec),
+      "Streak: " + plural(streak, "day", "days"),
+      "Logged: " + plural(history.length, "workout", "workouts") + " | " + allSets + " sets all-time"
+    ];
+    return lines.join("\n");
+  }
+  function buildBackupJson(){
+    return JSON.stringify({ app: "voice-coach-timer", schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(), sessions: loadHistory() });
+  }
+  // Returns {added, duplicates, skipped} or {error}
+  function importBackupText(text){
+    if (!text || !text.trim()) return { error: "Paste a backup into the box first." };
+    if (text.length > MAX_IMPORT_CHARS) return { error: "That backup is too large to import." };
+    var data;
+    try { data = JSON.parse(text); } catch(e) { return { error: "That is not valid backup text (could not read it)." }; }
+    var incoming = Array.isArray(data) ? data : (data && data.app === "voice-coach-timer" ? data.sessions : null);
+    if (!Array.isArray(incoming)) return { error: "That does not look like a Voice Coach Timer backup." };
+    if (data && !Array.isArray(data) && Number(data.schemaVersion) > SCHEMA_VERSION)
+      return { error: "This backup was made by a newer app version. Please update the app first." };
+    var history = loadHistory();
+    var seen = {};
+    history.forEach(function(r){ seen[r.id] = true; });
+    var added = 0, duplicates = 0, skipped = 0;
+    incoming.slice(0, MAX_SESSIONS).forEach(function(raw){
+      var rec = normalizeRecord(raw);
+      if (!rec) { skipped++; return; }
+      if (seen[rec.id]) { duplicates++; return; }
+      seen[rec.id] = true; history.push(rec); added++;
+    });
+    history.sort(function(a,b){ return a.ts - b.ts; });
+    if (history.length > MAX_SESSIONS) history = history.slice(history.length - MAX_SESSIONS);
+    saveHistoryList(history);
+    return { added: added, duplicates: duplicates, skipped: skipped };
+  }
+  function refreshHistorySummary(){
+    var history = loadHistory();
+    var el = $("historySummary");
+    if (!history.length) { el.textContent = ""; return; }
+    var streak = computeStreak(history);
+    var totalSets = history.reduce(function(s,r){ return s + r.totalSets; }, 0);
+    var lang = settings.lang;
+    var text;
+    if (lang === "zh") text = "🔥 連續 <b>" + streak + "</b> 天・已訓練 <b>" + history.length + "</b> 次・累計 <b>" + totalSets + "</b> 組";
+    else if (lang === "ja") text = "🔥 <b>" + streak + "</b>日連続・<b>" + history.length + "</b>回・通算 <b>" + totalSets + "</b>セット";
+    else if (lang === "es") text = "🔥 Racha de <b>" + streak + "</b> días · <b>" + history.length + "</b> entrenamientos · <b>" + totalSets + "</b> series";
+    else if (lang === "fr") text = "🔥 <b>" + streak + "</b> jours d'affilée · <b>" + history.length + "</b> séances · <b>" + totalSets + "</b> séries";
+    else if (lang === "ko") text = "🔥 <b>" + streak + "</b>일 연속 · <b>" + history.length + "</b>회 운동 · <b>" + totalSets + "</b>세트 누적";
+    else text = "🔥 <b>" + streak + "</b>-day streak · <b>" + history.length + "</b> workouts logged · <b>" + totalSets + "</b> sets all-time";
+    el.innerHTML = text;
+  }
+
+  /* ---------------- Initial render (must run after SETUP_UI/setupText exist above) ---------------- */
+  $("titleDisplay").textContent = settings.name || setupText().appTitle;
+  applySetupUiText();
+  updateSummary();
+  refreshHistorySummary();
+
+  /* ---------------- Screen switching ---------------- */
+  function showScreen(id){
+    document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); });
+    $(id).classList.add("active");
+  }
+
+  /* ---------------- Speech ---------------- */
+  var synth = window.speechSynthesis;
+  var VOICES = { zh:null, en:null, ja:null, es:null, fr:null, ko:null };
+  var FALLBACK_VOICE_LANG = { zh:"zh-TW", en:"en-US", ja:"ja-JP", es:"es-ES", fr:"fr-FR", ko:"ko-KR" };
+  var LANG_NAMES = { zh:"中文", en:"English", ja:"日本語", es:"Español", fr:"Français", ko:"한국어" };
+  function pickVoice(){
+    if (!synth) return;
+    var voices = synth.getVoices() || [];
+    function find(re, re2){
+      return voices.find(function(v){ return re.test(v.lang); }) ||
+             (re2 ? voices.find(function(v){ return re2.test(v.lang); }) : null) || null;
+    }
+    VOICES.zh = find(/zh-TW|zh-HK/i, /^zh/i);
+    VOICES.en = find(/en-US/i, /^en/i);
+    VOICES.ja = find(/^ja/i);
+    VOICES.es = find(/es-ES/i, /^es/i);
+    VOICES.fr = find(/fr-FR/i, /^fr/i);
+    VOICES.ko = find(/^ko/i);
+  }
+  if (synth) {
+    pickVoice();
+    synth.onvoiceschanged = pickVoice;
+  }
+
+  // texts: array of strings, all spoken in the CURRENTLY SELECTED language (settings.lang).
+  // One call = one "announcement": it cancels whatever was still queued from a previous
+  // call, but the strings *inside* this same call play back-to-back without cutting
+  // each other off — that's how "go" + "5" get said as one uninterrupted phrase.
+  function announce(texts){
+    if (!settings.voice || !synth || !texts || !texts.length) return;
+    try {
+      synth.cancel();
+      var voice = VOICES[settings.lang];
+      var fallbackLang = FALLBACK_VOICE_LANG[settings.lang] || "en-US";
+      texts.forEach(function(t){
+        if (!t) return;
+        var u = new SpeechSynthesisUtterance(t);
+        u.lang = voice ? voice.lang : fallbackLang;
+        if (voice) u.voice = voice;
+        u.rate = 1.02;
+        synth.speak(u);
+      });
+    } catch(e) {}
+  }
+  function speak(text){ announce([text]); }
+
+  // Fixed phrases in each language. Only the exercise name / counts are dynamic (built below).
+  var PHRASES = {
+    zh: { prepIntro:"準備開始", go:"加油", restFallback:"休息一下",
+          cycleRestIntro:"這一輪結束，休息一下，準備下一輪", done:"訓練完成，辛苦了" },
+    en: { prepIntro:"Get ready", go:"Go", restFallback:"Take a rest",
+          cycleRestIntro:"Round complete. Rest up and get ready for the next round.", done:"Workout complete. Great job." },
+    ja: { prepIntro:"準備してください", go:"頑張って", restFallback:"休憩しましょう",
+          cycleRestIntro:"1周終了です。休んで次の周に備えましょう。", done:"トレーニング終了です。お疲れ様でした。" },
+    es: { prepIntro:"Prepárate", go:"Vamos", restFallback:"Descansa un momento",
+          cycleRestIntro:"Ronda completada. Descansa y prepárate para la siguiente ronda.", done:"Entrenamiento completado. Buen trabajo." },
+    fr: { prepIntro:"Prépare-toi", go:"Allez", restFallback:"Repose-toi un instant",
+          cycleRestIntro:"Tour terminé. Repose-toi et prépare-toi pour le tour suivant.", done:"Entraînement terminé. Bravo." },
+    ko: { prepIntro:"준비하세요", go:"파이팅", restFallback:"잠깐 쉬세요",
+          cycleRestIntro:"한 라운드 끝났어요. 쉬고 다음 라운드 준비하세요.", done:"운동 끝났습니다. 수고하셨어요." }
+  };
+  function langPack(){ return PHRASES[settings.lang] || PHRASES.en; }
+
+  // Picks the exercise name in the active language; falls back to English, then Chinese,
+  // then whatever non-empty name exists — so a blank optional field never speaks silence.
+  function exerciseName(p){
+    var order = [settings.lang, "en", "zh", "ja", "es", "fr", "ko"];
+    for (var i = 0; i < order.length; i++){
+      if (p.names[order[i]]) return p.names[order[i]];
+    }
+    return "";
+  }
+
+  // One template per language for "exercise name + set number + sets/cycles left".
+  var WORK_INTRO = {
+    zh: function(name,p){ return name + "，第" + p.set + "組，剩下" + p.setsLeftInCycle + "組，剩下" + p.cyclesLeft + "輪"; },
+    en: function(name,p){
+      var sw = p.setsLeftInCycle === 1 ? "set" : "sets", cw = p.cyclesLeft === 1 ? "cycle" : "cycles";
+      return name + ". Set " + p.set + ". " + p.setsLeftInCycle + " " + sw + " left, " + p.cyclesLeft + " " + cw + " left.";
+    },
+    ja: function(name,p){ return name + "。第" + p.set + "セット。残り" + p.setsLeftInCycle + "セット、残り" + p.cyclesLeft + "ラウンド。"; },
+    es: function(name,p){
+      var sw = p.setsLeftInCycle === 1 ? "serie" : "series", cw = p.cyclesLeft === 1 ? "ronda" : "rondas";
+      return name + ". Serie " + p.set + ". Quedan " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
+    },
+    fr: function(name,p){
+      var sw = p.setsLeftInCycle === 1 ? "série" : "séries", cw = p.cyclesLeft === 1 ? "tour" : "tours";
+      return name + ". Série " + p.set + ". Il reste " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
+    },
+    ko: function(name,p){
+      return name + ". " + p.set + "번째 세트. 남은 세트 " + p.setsLeftInCycle + "개, 남은 라운드 " + p.cyclesLeft + "개.";
+    }
+  };
+  function workIntroText(p){
+    var tpl = WORK_INTRO[settings.lang] || WORK_INTRO.en;
+    return tpl(exerciseName(p), p);
+  }
+
+  // Random encouragement line from whichever list matches the active language,
+  // falling back to English, then to the fixed phrase in PHRASES.
+  function restIntroText(){
+    var list = encListsByLang[settings.lang];
+    if (list && list.length) return list[Math.floor(Math.random() * list.length)];
+    if (encListsByLang.en && encListsByLang.en.length) return encListsByLang.en[Math.floor(Math.random() * encListsByLang.en.length)];
+    return langPack().restFallback;
+  }
+
+  // UI text shown on the run/done screens — switches with the voice language so the
+  // person always sees and hears the same language at once.
+  var UI = {
+    zh: { phase:{prep:"準備",work:"運動",rest:"休息",cyclerest:"輪間休息",done:"完成"},
+          setsLeft:"剩餘組數", cyclesLeft:"剩餘輪數", pause:"暫停", resume:"繼續",
+          nextPrefix:"接下來：", nextLast:"最後一階段", secUnit:"秒",
+          voicePrefix:"語音提示：", voiceOn:"開啟", voiceOff:"關閉",
+          doneTitle:"訓練完成", doneBtn:"回到設定", shareBtn:"分享成果", shareCopied:"已複製！貼給朋友吧",
+          doneSummary:function(c,t){ return "完成 " + c + " 輪，共 " + t + " 組，辛苦了！"; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 連續 " + streak + " 天！今天完成《" + name + "》共 " + today + " 組（累計 " + total + " 組，共 " + sessions + " 次訓練）。換你了 💪"; } },
+    en: { phase:{prep:"Ready",work:"Work",rest:"Rest",cyclerest:"Round Rest",done:"Done"},
+          setsLeft:"Sets Left", cyclesLeft:"Cycles Left", pause:"Pause", resume:"Resume",
+          nextPrefix:"Up next: ", nextLast:"Final stage", secUnit:"s",
+          voicePrefix:"Voice cues: ", voiceOn:"On", voiceOff:"Off",
+          doneTitle:"Workout Complete", doneBtn:"Back to Setup", shareBtn:"Share Result", shareCopied:"Copied! Paste it to a friend",
+          doneSummary:function(c,t){ return "Finished " + c + " rounds, " + t + " sets total. Great work!"; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "-day streak! Just finished \"" + name + "\" — " + today + " sets today (" + total + " all-time across " + sessions + " workouts). Your turn 💪"; } },
+    ja: { phase:{prep:"準備",work:"運動",rest:"休憩",cyclerest:"ラウンド休憩",done:"終了"},
+          setsLeft:"残りセット数", cyclesLeft:"残りラウンド数", pause:"一時停止", resume:"再開",
+          nextPrefix:"次は：", nextLast:"最後のステージ", secUnit:"秒",
+          voicePrefix:"音声案内：", voiceOn:"オン", voiceOff:"オフ",
+          doneTitle:"トレーニング終了", doneBtn:"設定に戻る", shareBtn:"結果をシェア", shareCopied:"コピーしました！友達に送ろう",
+          doneSummary:function(c,t){ return c + "ラウンド、合計" + t + "セット完了です。お疲れ様でした！"; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "日連続！「" + name + "」を" + today + "セット完了（通算" + total + "セット、" + sessions + "回のトレーニング）。次はあなたの番 💪"; } },
+    es: { phase:{prep:"Prepárate",work:"Trabajo",rest:"Descanso",cyclerest:"Descanso de ronda",done:"Completado"},
+          setsLeft:"Series restantes", cyclesLeft:"Rondas restantes", pause:"Pausa", resume:"Reanudar",
+          nextPrefix:"Siguiente: ", nextLast:"Última etapa", secUnit:"s",
+          voicePrefix:"Aviso de voz: ", voiceOn:"Activado", voiceOff:"Desactivado",
+          doneTitle:"Entrenamiento completado", doneBtn:"Volver a configuración", shareBtn:"Compartir resultado", shareCopied:"¡Copiado! Envíaselo a un amigo",
+          doneSummary:function(c,t){ return "Completaste " + c + " rondas, " + t + " series en total. ¡Buen trabajo!"; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 ¡Racha de " + streak + " días! Acabo de completar \"" + name + "\" — " + today + " series hoy (" + total + " en total en " + sessions + " entrenamientos). Te toca 💪"; } },
+    fr: { phase:{prep:"Préparation",work:"Travail",rest:"Repos",cyclerest:"Repos entre tours",done:"Terminé"},
+          setsLeft:"Séries restantes", cyclesLeft:"Tours restants", pause:"Pause", resume:"Reprendre",
+          nextPrefix:"Ensuite : ", nextLast:"Dernière étape", secUnit:"s",
+          voicePrefix:"Indications vocales : ", voiceOn:"Activé", voiceOff:"Désactivé",
+          doneTitle:"Entraînement terminé", doneBtn:"Retour aux réglages", shareBtn:"Partager le résultat", shareCopied:"Copié ! Envoie ça à un ami",
+          doneSummary:function(c,t){ return c + " tours terminés, " + t + " séries au total. Bravo !"; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + " jours d'affilée ! Je viens de terminer « " + name + " » — " + today + " séries aujourd'hui (" + total + " au total sur " + sessions + " séances). À toi de jouer 💪"; } },
+    ko: { phase:{prep:"준비",work:"운동",rest:"휴식",cyclerest:"라운드 휴식",done:"완료"},
+          setsLeft:"남은 세트", cyclesLeft:"남은 라운드", pause:"일시정지", resume:"계속",
+          nextPrefix:"다음: ", nextLast:"마지막 단계", secUnit:"초",
+          voicePrefix:"음성 안내: ", voiceOn:"켜짐", voiceOff:"꺼짐",
+          doneTitle:"운동 완료", doneBtn:"설정으로 돌아가기", shareBtn:"결과 공유", shareCopied:"복사했어요! 친구에게 보내보세요",
+          doneSummary:function(c,t){ return c + "라운드, 총 " + t + "세트 완료! 수고하셨어요."; },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "일 연속! \"" + name + "\" " + today + "세트 완료 (누적 " + total + "세트, " + sessions + "회 운동). 이제 네 차례 💪"; } }
+  };
+  function uiText(){ return UI[settings.lang] || UI.en; }
+  function voiceNoteText(){
+    var ui = uiText();
+    return ui.voicePrefix + (settings.voice ? (ui.voiceOn + "・" + LANG_NAMES[settings.lang]) : ui.voiceOff);
+  }
+
+  /* ---------------- Build phase timeline ---------------- */
+  var LANG_CODES = ["zh","en","ja","es","fr","ko"];
+  var EXERCISE_FIELD = { zh:"exercises", en:"exercisesEn", ja:"exercisesJa", es:"exercisesEs", fr:"exercisesFr", ko:"exercisesKo" };
+  var ENCOURAGE_FIELD = { zh:"encourage", en:"encourageEn", ja:"encourageJa", es:"encourageEs", fr:"encourageFr", ko:"encourageKo" };
+
+  var phases = [];
+  var exListsByLang = {};
+  var encListsByLang = {};
+
+  function splitList(raw){
+    return (raw || "").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+
+  function buildPhases(){
+    phases = [];
+    LANG_CODES.forEach(function(lang){
+      exListsByLang[lang] = splitList(settings[EXERCISE_FIELD[lang]]);
+      encListsByLang[lang] = splitList(settings[ENCOURAGE_FIELD[lang]]);
+    });
+    if (exListsByLang.zh.length === 0) exListsByLang.zh = ["運動"];
+    if (encListsByLang.zh.length === 0) encListsByLang.zh = ["休息一下"];
+
+    if (settings.prep > 0) phases.push({ type:"prep", duration:settings.prep });
+
+    var exIdx = 0;
+    for (var c = 1; c <= settings.cycles; c++){
+      for (var s = 1; s <= settings.sets; s++){
+        var names = {};
+        LANG_CODES.forEach(function(lang){
+          var list = exListsByLang[lang];
+          names[lang] = list.length ? list[exIdx % list.length] : "";
+        });
+        exIdx++;
+        phases.push({ type:"work", duration:settings.work, cycle:c, set:s, names:names,
+          setsLeftInCycle: settings.sets - s + 1, cyclesLeft: settings.cycles - c + 1 });
+        var isLastSetOfLastCycle = (c === settings.cycles && s === settings.sets);
+        if (!isLastSetOfLastCycle && settings.rest > 0 && s < settings.sets){
+          phases.push({ type:"rest", duration:settings.rest, cycle:c, set:s,
+            setsLeftInCycle: settings.sets - s, cyclesLeft: settings.cycles - c + 1 });
+        }
+      }
+      if (c < settings.cycles && settings.cyclerest > 0){
+        phases.push({ type:"cyclerest", duration:settings.cyclerest, cycle:c,
+          setsLeftInCycle: settings.sets, cyclesLeft: settings.cycles - c });
+      }
+    }
+    phases.push({ type:"done", duration:0 });
+  }
+
+  var PHASE_COLOR = { prep:"var(--prep)", work:"var(--work)", rest:"var(--rest)", cyclerest:"var(--cyclerest)", done:"var(--done)" };
+
+  /* ---------------- Engine ---------------- */
+  var COUNTDOWN_WINDOW = 5; // start speaking the countdown this many seconds before a phase ends
+  var idx = 0;
+  var running = false;
+  var paused = false;
+  var phaseEnd = 0;
+  var phaseDurationMs = 0;
+  var remainingAtPause = 0;
+  var tickHandle = null;
+  var totalDurationSec = 1;
+  var elapsedBeforeCurrentSec = 0;
+  var lastSpokenCountdownSecond = null;
+  var announcedThisPhase = false;
+
+  var ringFg = $("ringFg");
+  var RING_CIRC = 2 * Math.PI * 88;
+
+  function computeTotalDuration(){
+    var t = 0;
+    phases.forEach(function(p){ t += p.duration; });
+    return Math.max(t, 1);
+  }
+
+  function applyStaticUiText(){
+    var ui = uiText();
+    $("setsLeftLabel").textContent = ui.setsLeft;
+    $("cyclesLeftLabel").textContent = ui.cyclesLeft;
+    $("playPauseBtn").textContent = paused ? ui.resume : ui.pause;
+    $("doneTitle").textContent = ui.doneTitle;
+    $("restartBtn").textContent = ui.doneBtn;
+  }
+
+  function startWorkout(){
+    sessionStartTs = Date.now();
+    buildPhases();
+    totalDurationSec = computeTotalDuration();
+    elapsedBeforeCurrentSec = 0;
+    idx = 0;
+    $("runTitle").textContent = settings.name || "訓練";
+    applyStaticUiText();
+    $("voiceNote").textContent = voiceNoteText();
+    $("muteBtn").textContent = settings.voice ? "🔊" : "🔇";
+    showScreen("run");
+    enterPhase(0, true);
+  }
+
+  function enterPhase(i, announceIntro){
+    if (i >= phases.length) { finishWorkout(); return; }
+    idx = i;
+    var p = phases[idx];
+    if (p.type === "done") { finishWorkout(); return; }
+
+    var ui = uiText();
+    $("phaseLabel").textContent = ui.phase[p.type];
+    $("phaseLabel").style.color = PHASE_COLOR[p.type];
+    ringFg.style.stroke = PHASE_COLOR[p.type];
+    $("exerciseLabel").textContent = (p.type === "work") ? exerciseName(p) : "\u00A0";
+    $("setsLeft").textContent = p.setsLeftInCycle != null ? p.setsLeftInCycle : "–";
+    $("cyclesLeft").textContent = p.cyclesLeft != null ? p.cyclesLeft : "–";
+
+    var next = phases[idx+1];
+    if (next && next.type !== "done"){
+      var exercisePart = next.type === "work" ? "・" + exerciseName(next) : "";
+      $("nextUp").textContent = ui.nextPrefix + ui.phase[next.type] + exercisePart + " (" + next.duration + ui.secUnit + ")";
+    } else {
+      $("nextUp").textContent = ui.nextLast;
+    }
+
+    phaseDurationMs = p.duration * 1000;
+    phaseEnd = Date.now() + phaseDurationMs;
+    paused = false;
+    running = true;
+    lastSpokenCountdownSecond = null;
+    announcedThisPhase = false;
+    $("playPauseBtn").textContent = ui.pause;
+
+    updateTimeDisplay(p.duration);
+    updateRing(1);
+
+    if (announceIntro !== false){
+      if (p.type === "prep") speak(langPack().prepIntro);
+      else if (p.type === "work") speak(workIntroText(p));
+      else if (p.type === "rest") speak(restIntroText());
+      else if (p.type === "cyclerest") speak(langPack().cycleRestIntro);
+      announcedThisPhase = true;
+    }
+
+    clearInterval(tickHandle);
+    tickHandle = setInterval(tick, 100);
+    tick();
+  }
+
+  function tick(){
+    if (!running || paused) return;
+    var p = phases[idx];
+    var remainMs = phaseEnd - Date.now();
+    if (remainMs <= 0){
+      elapsedBeforeCurrentSec += p.duration;
+      enterPhase(idx + 1, true);
+      return;
+    }
+    var remainSec = Math.ceil(remainMs / 1000);
+    updateTimeDisplay(remainSec);
+    updateRing(remainMs / phaseDurationMs);
+
+    if (remainSec <= COUNTDOWN_WINDOW && remainSec >= 1 && remainSec !== lastSpokenCountdownSecond){
+      lastSpokenCountdownSecond = remainSec;
+      if (remainSec === COUNTDOWN_WINDOW){
+        announce([langPack().go, String(remainSec)]); // "Go" / "加油", then start counting from 5
+      } else {
+        speak(String(remainSec));
+      }
+    }
+
+    var overallElapsed = elapsedBeforeCurrentSec + (p.duration - remainSec);
+    $("overallFill").style.width = Math.min(100, (overallElapsed / totalDurationSec) * 100) + "%";
+  }
+
+  function updateTimeDisplay(sec){
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    $("timeBig").textContent = (m<10?"0":"")+m + ":" + (s<10?"0":"")+s;
+  }
+  function updateRing(fraction){
+    var off = RING_CIRC * (1 - Math.max(0, Math.min(1, fraction)));
+    ringFg.setAttribute("stroke-dasharray", RING_CIRC);
+    ringFg.setAttribute("stroke-dashoffset", off);
+  }
+
+  var lastShareText = "";
+  var lastBriefText = "";
+  var sessionStartTs = Date.now();
+  function finishWorkout(){
+    clearInterval(tickHandle);
+    running = false;
+    speak(langPack().done);
+    var totalSets = settings.sets * settings.cycles;
+    var ui = uiText();
+    $("doneTitle").textContent = ui.doneTitle;
+    $("doneSummary").textContent = ui.doneSummary(settings.cycles, totalSets);
+    $("restartBtn").textContent = ui.doneBtn;
+    $("shareBtn").textContent = ui.shareBtn;
+
+    var logged = logSession(totalSets);
+    var history = logged.history;
+    var streak = computeStreak(history);
+    var allTimeSets = history.reduce(function(s,r){ return s + r.totalSets; }, 0);
+    $("historyStrip").innerHTML =
+      "<span>🔥 <b>" + streak + "</b></span>" +
+      "<span>📅 <b>" + totalSets + "</b></span>" +
+      "<span>Σ <b>" + allTimeSets + "</b> · <b>" + history.length + "</b></span>";
+    lastShareText = ui.shareText(streak, totalSets, allTimeSets, history.length, settings.name || setupText().appTitle);
+    lastBriefText = buildBrief(logged.record, history);
+
+    refreshHistorySummary();
+    showScreen("done");
+  }
+
+  /* ---------------- Controls ---------------- */
+  $("startBtn").addEventListener("click", function(){
+    if (synth) { try { synth.cancel(); var warm = new SpeechSynthesisUtterance(""); synth.speak(warm); } catch(e){} }
+    startWorkout();
+  });
+
+  $("playPauseBtn").addEventListener("click", function(){
+    if (!running) return;
+    var ui = uiText();
+    if (!paused){
+      paused = true;
+      remainingAtPause = phaseEnd - Date.now();
+      $("playPauseBtn").textContent = ui.resume;
+      if (synth) synth.cancel();
+    } else {
+      paused = false;
+      phaseEnd = Date.now() + remainingAtPause;
+      phaseDurationMs = phases[idx].duration * 1000;
+      $("playPauseBtn").textContent = ui.pause;
+    }
+  });
+
+  $("nextBtn").addEventListener("click", function(){
+    if (!running) return;
+    var p = phases[idx];
+    elapsedBeforeCurrentSec += p.duration;
+    clearInterval(tickHandle);
+    enterPhase(idx + 1, true);
+  });
+
+  $("prevBtn").addEventListener("click", function(){
+    if (!running) return;
+    var target = idx > 0 ? idx - 1 : 0;
+    elapsedBeforeCurrentSec = 0;
+    for (var i = 0; i < target; i++) elapsedBeforeCurrentSec += phases[i].duration;
+    clearInterval(tickHandle);
+    enterPhase(target, true);
+  });
+
+  $("muteBtn").addEventListener("click", function(){
+    settings.voice = !settings.voice;
+    saveSettings();
+    $("muteBtn").textContent = settings.voice ? "🔊" : "🔇";
+    $("voiceNote").textContent = voiceNoteText();
+    if (!settings.voice && synth) synth.cancel();
+  });
+
+  $("exitBtn").addEventListener("click", function(){
+    clearInterval(tickHandle);
+    running = false;
+    if (synth) synth.cancel();
+    $("overallFill").style.width = "0%";
+    showScreen("setup");
+  });
+
+  $("restartBtn").addEventListener("click", function(){
+    $("overallFill").style.width = "0%";
+    showScreen("setup");
+  });
+
+  // Share via the phone's share sheet when available; otherwise copy to the clipboard.
+  function shareOrCopy(text, btn, copiedLabel){
+    if (navigator.share) {
+      navigator.share({ text: text }).catch(function(){});
+      return;
+    }
+    var flash = function(){
+      var original = btn.textContent;
+      btn.textContent = copiedLabel;
+      setTimeout(function(){ btn.textContent = original; }, 2200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash).catch(flash);
+    } else {
+      flash();
+    }
+  }
+
+  $("shareBtn").addEventListener("click", function(){
+    shareOrCopy(lastShareText, $("shareBtn"), uiText().shareCopied);
+  });
+  $("briefBtn").addEventListener("click", function(){
+    shareOrCopy(lastBriefText, $("briefBtn"), "Copied! Paste it into an email or note");
+  });
+
+  /* ---------------- Backup & Restore (English only) ---------------- */
+  $("exportBtn").addEventListener("click", function(){
+    var history = loadHistory();
+    if (!history.length) { $("backupStatus").textContent = "Nothing to export yet - finish a workout first."; return; }
+    var json = buildBackupJson();
+    $("backupBox").value = json;
+    $("backupStatus").textContent = "Exported " + plural(history.length, "workout", "workouts") + ". Copy this text and keep it somewhere safe (email it to yourself).";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(json).then(function(){
+        $("backupStatus").textContent = "Exported " + plural(history.length, "workout", "workouts") + " and copied to the clipboard. Paste it into an email or note.";
+      }).catch(function(){});
+    }
+  });
+  $("importBtn").addEventListener("click", function(){
+    var res = importBackupText($("backupBox").value);
+    if (res.error) { $("backupStatus").textContent = res.error; return; }
+    $("backupStatus").textContent = "Imported " + plural(res.added, "new workout", "new workouts") +
+      (res.duplicates ? ", " + res.duplicates + " already here" : "") +
+      (res.skipped ? ", " + res.skipped + " unreadable skipped" : "") + ".";
+    refreshHistorySummary();
+  });
+
+})();
+</script>
+</body>
+</html>
