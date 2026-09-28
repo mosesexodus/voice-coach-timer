@@ -370,6 +370,7 @@
       <button class="ctrl-round small" id="nextBtn" aria-label="下一階段">⏭</button>
     </div>
     <div class="mute-note" id="voiceNote">語音提示：開啟</div>
+    <div class="mute-note" id="wakeLockNote" role="status"></div>
   </section>
 
   <!-- DONE -->
@@ -1037,6 +1038,44 @@
 
   var PHASE_COLOR = { prep:"var(--prep)", work:"var(--work)", rest:"var(--rest)", cyclerest:"var(--cyclerest)", done:"var(--done)" };
 
+  /* ---------------- Screen wake lock ---------------- */
+  // Keeps the screen from auto-dimming/locking while a workout is running, so the
+  // countdown/voice cues (setInterval-driven) don't get throttled by the OS. This can
+  // NOT override the user manually pressing the power button, and iOS Safari only
+  // supports it from iOS 18.4, and not at all in "Add to Home Screen" standalone mode.
+  var wakeLock = null;
+  var wakeLockWanted = false; // true while a workout is meant to be running
+  function wakeLockSupported(){ return "wakeLock" in navigator; }
+  function requestWakeLock(){
+    if (!wakeLockSupported()) { $("wakeLockNote").textContent = wakeLockNoteText(); return; }
+    navigator.wakeLock.request("screen").then(function(lock){
+      wakeLock = lock;
+      $("wakeLockNote").textContent = "";
+      wakeLock.addEventListener("release", function(){ wakeLock = null; });
+    }).catch(function(){
+      // Denied (e.g. embedded in an iframe without screen-wake-lock permission, or battery saver policy)
+      $("wakeLockNote").textContent = wakeLockNoteText();
+    });
+  }
+  function releaseWakeLock(){
+    wakeLockWanted = false;
+    if (wakeLock) { wakeLock.release().catch(function(){}); wakeLock = null; }
+  }
+  document.addEventListener("visibilitychange", function(){
+    if (wakeLockWanted && document.visibilityState === "visible" && !wakeLock) requestWakeLock();
+  });
+  function wakeLockNoteText(){
+    var t = {
+      zh: "此裝置無法自動保持螢幕常亮，請至手機設定調整「自動鎖定時間」，訓練時避免螢幕變暗。",
+      en: "This device can't auto-keep the screen on. In your phone's display settings, extend the screen-lock timeout for the workout.",
+      ja: "この端末では画面を自動で常時点灯にできません。トレーニング中は端末の画面ロック時間を長めに設定してください。",
+      es: "Este dispositivo no puede mantener la pantalla encendida automáticamente. Ajusta el tiempo de bloqueo de pantalla en tu teléfono durante el entrenamiento.",
+      fr: "Cet appareil ne peut pas garder l'écran allumé automatiquement. Augmente le délai de verrouillage de l'écran dans les réglages pendant l'entraînement.",
+      ko: "이 기기는 화면을 자동으로 켜진 상태로 유지할 수 없습니다. 운동 중에는 휴대폰 화면 잠금 시간을 길게 설정해 주세요."
+    };
+    return t[settings.lang] || t.en;
+  }
+
   /* ---------------- Engine ---------------- */
   var COUNTDOWN_WINDOW = 5; // start speaking the countdown this many seconds before a phase ends
   var idx = 0;
@@ -1172,6 +1211,7 @@
   function finishWorkout(){
     clearInterval(tickHandle);
     running = false;
+    releaseWakeLock();
     speak(langPack().done);
     var totalSets = settings.sets * settings.cycles;
     var ui = uiText();
@@ -1198,6 +1238,8 @@
   /* ---------------- Controls ---------------- */
   $("startBtn").addEventListener("click", function(){
     if (synth) { try { synth.cancel(); var warm = new SpeechSynthesisUtterance(""); synth.speak(warm); } catch(e){} }
+    wakeLockWanted = true;
+    requestWakeLock();
     startWorkout();
   });
 
@@ -1245,6 +1287,7 @@
   $("exitBtn").addEventListener("click", function(){
     clearInterval(tickHandle);
     running = false;
+    releaseWakeLock();
     if (synth) synth.cancel();
     $("overallFill").style.width = "0%";
     showScreen("setup");
