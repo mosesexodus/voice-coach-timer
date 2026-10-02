@@ -116,6 +116,10 @@
   .btn-row { display:flex; gap:10px; margin-top:10px; }
   .mini-btn { flex:1; padding: 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-panel-2); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; }
   .mini-btn:active { transform: scale(0.98); }
+  .mini-btn.primary { background: var(--work); border-color: var(--work); color: #1A0D08; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index: 50; padding: 24px; }
+  .modal-card { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 20px; max-width: 360px; width: 100%; }
+  .modal-card p { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--text); }
   .switch { position: relative; width: 44px; height: 26px; flex-shrink:0; }
   .switch input { opacity:0; width:100%; height:100%; margin:0; position:absolute; cursor:pointer; }
   .switch .track { position:absolute; inset:0; background: var(--bg-panel-2); border:1px solid var(--line); border-radius: 999px; transition: background .15s; }
@@ -189,6 +193,27 @@
     <div class="brand"><span class="mark"></span><h1 id="titleDisplay">Voice Coach Timer</h1></div>
     <p class="brand-sub" id="subtitleText">Set your cues and interval times, then the voice calls out cues, times, and rest encouragement automatically.</p>
     <div class="history-line" id="historySummary"></div>
+
+    <div class="field">
+      <label id="templateLabel">Template</label>
+      <div class="seg-control" id="templateControl">
+        <button type="button" class="seg-btn" data-template="core">Core</button>
+        <button type="button" class="seg-btn" data-template="park">Park Bars</button>
+        <button type="button" class="seg-btn" data-template="wrestle">Wrestling Mat</button>
+      </div>
+      <div class="hint" id="templateHint">Loads a starter set of cues below - edit anything after.</div>
+    </div>
+
+    <div class="field">
+      <label id="durationLabel">Session Length</label>
+      <div class="seg-control" id="durationControl">
+        <button type="button" class="seg-btn" data-duration="micro">Micro · ~15 min</button>
+        <button type="button" class="seg-btn" data-duration="tight">Tight · ~29 min</button>
+        <button type="button" class="seg-btn" data-duration="relaxed">Relaxed · ~59 min</button>
+      </div>
+      <div class="hint" id="durationHint">Only changes the number of rounds below, to fit this time - the stations and their timing stay as set.</div>
+      <div class="hint" id="durationResult" role="status"></div>
+    </div>
 
     <div class="field">
       <label for="wname" id="wnameLabel">Workout Name</label>
@@ -382,9 +407,20 @@
     <button class="cta" id="restartBtn">Back to Setup</button>
     <button class="cta secondary" id="shareBtn">Share Result</button>
     <button class="cta secondary" id="briefBtn">Share Brief (English)</button>
+    <button class="cta secondary" id="inviteBtn" style="display:none">Invite a Friend</button>
   </section>
 
   <div class="overall-bar"><div class="overall-bar-fill" id="overallFill"></div></div>
+
+  <div class="modal-backdrop" id="confirmBackdrop" style="display:none">
+    <div class="modal-card">
+      <p id="confirmMessage"></p>
+      <div class="btn-row">
+        <button type="button" class="mini-btn" id="confirmCancelBtn">Cancel</button>
+        <button type="button" class="mini-btn primary" id="confirmOkBtn">Continue</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -398,17 +434,69 @@
     exercisesEs:"Saltos de tijera, Zancadas caminando, Burpees, Plancha, Escaladores, Sentadillas con salto, Plancha lateral, Elevaciones de piernas",
     exercisesFr:"Jumping jacks, Fentes marchées, Burpees, Planche, Grimpeurs, Squats sautés, Planche latérale, Relevés de jambes",
     exercisesKo:"점핑잭, 워킹 런지, 버피, 플랭크, 마운틴 클라이머, 점프 스쿼트, 사이드 플랭크, 레그 레이즈",
-    work:30, rest:15, sets:8, cycles:3, cyclerest:60, prep:5, voice:true, lang:"en",
+    work:30, rest:20, sets:8, cycles:3, cyclerest:60, prep:5, voice:true, lang:"en",
     encourage:"做得很好, 休息一下, 撐住, 你比昨天更強了, 調整呼吸, 準備下一組, 狀態很棒, 再堅持一下, 喝口水, 肩膀放鬆, 很有節奏, 就是這樣",
     encourageEn:"Great job, Take a breather, Hang in there, Stronger than yesterday, Breathe deep, Get ready for the next set, Looking strong, Almost there, Grab some water, Relax those shoulders, Nice rhythm, That's it",
     encourageJa:"よくできました, 一息つきましょう, 頑張って, 昨日より強くなってる, 深呼吸して, 次のセットの準備を, 調子いいよ, もう少し, 水分補給して, 肩の力を抜いて, いいリズム, その調子",
     encourageEs:"Muy bien hecho, Respira un momento, Aguanta, Más fuerte que ayer, Respira profundo, Prepárate para la siguiente serie, Te ves fuerte, Ya casi, Bebe agua, Relaja los hombros, Buen ritmo, Así se hace",
     encourageFr:"Très bien joué, Reprends ton souffle, Tiens bon, Plus fort qu'hier, Respire profondément, Prépare-toi pour la prochaine série, Ça a l'air solide, Presque fini, Bois de l'eau, Détends les épaules, Bon rythme, Voilà comme ça",
     encourageKo:"잘하고 있어요, 잠깐 숨 고르세요, 조금만 더 버텨요, 어제보다 강해졌어요, 심호흡하세요, 다음 세트 준비하세요, 컨디션 좋아 보여요, 거의 다 왔어요, 물 한 모금 하세요, 어깨에 힘 빼세요, 리듬이 좋아요, 바로 그거예요" };
+  // Starter content for different training contexts. "core" mirrors DEFAULTS (bodyweight
+  // HIIT circuit); "park" assumes a pull-up bar + dip bars; "wrestle" is mat conditioning
+  // with no equipment. Only zh/en are filled in for park/wrestle - the other four
+  // languages fall back to English automatically (same rule as a coach leaving a field
+  // blank), so a template switch never produces a silent gap.
+  var TEMPLATES = {
+    core: { name: DEFAULTS.name, nameZh: "核心訓練",
+      exercises: DEFAULTS.exercises, exercisesEn: DEFAULTS.exercisesEn, exercisesJa: DEFAULTS.exercisesJa,
+      exercisesEs: DEFAULTS.exercisesEs, exercisesFr: DEFAULTS.exercisesFr, exercisesKo: DEFAULTS.exercisesKo,
+      encourage: DEFAULTS.encourage, encourageEn: DEFAULTS.encourageEn, encourageJa: DEFAULTS.encourageJa,
+      encourageEs: DEFAULTS.encourageEs, encourageFr: DEFAULTS.encourageFr, encourageKo: DEFAULTS.encourageKo,
+      work:30, rest:20, sets:8, cycles:3, cyclerest:60, prep:5 },
+    park: { name: "Park Bar Full-Body Workout", nameZh: "公園單雙槓全身訓練",
+      // 10 stations alternating high-output (出力) with ground-level slow recovery (躺臥/動態緩和),
+      // covering push / pull / lower-body / core. No head-bridge moves. Each "／" variation is
+      // spoken as one combined cue - safer than relying on exact set-count rotation.
+      exercises: "引體向上：寬握／窄握／反握／彈力帶輔助, 單腿臀橋（慢速，每邊）, 深蹲跳／摸高跳／蛙式遠跳, 死蟲式（慢速，每邊）, 雙槓撐體, 仰臥交叉觸趾（慢速，每邊）, 弓箭步跳（每邊）, 登山者式支撐：慢速／停頓式／斜向, 俯臥撐：波浪式／交替單腳, 懸垂抬腿：抬膝／直腿",
+      exercisesEn: "Pull-Ups: Wide／Narrow／Reverse／Band-Assisted, Single-Leg Glute Bridge (slow, each side), Jump Squats／Jump Reach／Frog Jumps, Dead Bug (slow, each side), Bar Dips, Lying Cross Toe Touches (slow, each side), Jumping Lunges (each side), Mountain Climber Hold: Slow／Paused／Diagonal, Push-Ups: Wave／Single-Leg, Hanging Leg Raises: Knee Tuck／Straight Leg",
+      exercisesJa: "", exercisesEs: "", exercisesFr: "", exercisesKo: "",
+      encourage: "保持核心穩定, 呼吸別憋氣, 量力而為, 你做得到, 控制動作品質比速度重要, 準備下一站, 喝口水, 肩膀放鬆",
+      encourageEn: "Keep your core tight, Don't hold your breath, Listen to your body, You've got this, Quality over speed, Get ready for the next station, Grab some water, Relax your shoulders",
+      encourageJa: "", encourageEs: "", encourageFr: "", encourageKo: "",
+      work:20, rest:20, sets:10, cycles:3, cyclerest:90, prep:5 },
+    wrestle: { name: "Wrestling Mat Conditioning", nameZh: "摔跤地墊無器械體能",
+      exercises: "穿梭步（站姿移動）, 撲摔預備動作, 熊爬, 橋式頸部訓練, 開合跳, 深蹲跳, 棒式撐體, 登山者",
+      exercisesEn: "Stance & Motion, Sprawls, Bear Crawl, Neck Bridges, Jumping Jacks, Jump Squats, Plank Hold, Mountain Climbers",
+      exercisesJa: "", exercisesEs: "", exercisesFr: "", exercisesKo: "",
+      encourage: "重心放低, 動作要快, 保護好頸部, 你很強, 穩住呼吸, 準備下一組, 喝口水, 放鬆肩頸",
+      encourageEn: "Stay low, Be quick, Protect your neck, You're strong, Steady breathing, Get ready for the next set, Grab some water, Relax your neck and shoulders",
+      encourageJa: "", encourageEs: "", encourageFr: "", encourageKo: "",
+      work:30, rest:20, sets:6, cycles:4, cyclerest:60, prep:5 }
+  };
+  var TEMPLATE_FIELDS = ["exercises","exercisesEn","exercisesJa","exercisesEs","exercisesFr","exercisesKo",
+    "encourage","encourageEn","encourageJa","encourageEs","encourageFr","encourageKo",
+    "work","rest","sets","cycles","cyclerest","prep"];
+  // Pure data mutation, no DOM - safe to call before the rest of the script has run.
+  function mergeTemplateIntoSettings(key){
+    var t = TEMPLATES[key];
+    if (!t) return;
+    settings.template = key;
+    settings.name = (settings.lang === "zh" && t.nameZh) ? t.nameZh : t.name;
+    TEMPLATE_FIELDS.forEach(function(f){ if (t[f] !== undefined) settings[f] = t[f]; });
+  }
+
   var settings = Object.assign({}, DEFAULTS);
+  var saved = null;
   try {
-    var saved = localStorage.getItem("intervalTimerSettings");
+    saved = localStorage.getItem("intervalTimerSettings");
     if (saved) settings = Object.assign({}, DEFAULTS, JSON.parse(saved));
+  } catch(e) {}
+  if (!settings.template) settings.template = "core";
+  // A deep link like ?t=park pre-loads a template - but only for a brand-new visitor.
+  // A returning coach's own saved edits are never silently overwritten by a link.
+  try {
+    var urlTemplate = new URLSearchParams(window.location.search).get("t");
+    if (urlTemplate && TEMPLATES[urlTemplate] && !saved) mergeTemplateIntoSettings(urlTemplate);
   } catch(e) {}
 
   function saveSettings(){
@@ -418,28 +506,45 @@
   /* ---------------- Setup screen wiring ---------------- */
   var $ = function(id){ return document.getElementById(id); };
 
-  $("wname").value = settings.name;
-  $("exercises").value = settings.exercises;
-  $("exercisesEn").value = settings.exercisesEn;
-  $("exercisesJa").value = settings.exercisesJa;
-  $("exercisesEs").value = settings.exercisesEs;
-  $("exercisesFr").value = settings.exercisesFr;
-  $("exercisesKo").value = settings.exercisesKo;
-  $("encourage").value = settings.encourage;
-  $("encourageEn").value = settings.encourageEn;
-  $("encourageJa").value = settings.encourageJa;
-  $("encourageEs").value = settings.encourageEs;
-  $("encourageFr").value = settings.encourageFr;
-  $("encourageKo").value = settings.encourageKo;
-  $("voiceOn").checked = !!settings.voice;
-
+  var steppers = { work:{min:5,max:600,step:5}, rest:{min:0,max:300,step:5}, sets:{min:1,max:30,step:1},
+    cycles:{min:1,max:20,step:1}, cyclerest:{min:0,max:600,step:5}, prep:{min:0,max:30,step:1} };
+  function refreshSteppers(){
+    Object.keys(steppers).forEach(function(k){ $(k+"Val").textContent = settings[k]; });
+  }
   function refreshLangButtons(){
-    document.querySelectorAll(".seg-btn").forEach(function(btn){
+    document.querySelectorAll(".seg-btn[data-lang]").forEach(function(btn){
       btn.classList.toggle("active", btn.getAttribute("data-lang") === settings.lang);
     });
   }
-  refreshLangButtons();
-  document.querySelectorAll(".seg-btn").forEach(function(btn){
+  function refreshTemplateButtons(){
+    document.querySelectorAll(".seg-btn[data-template]").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-template") === settings.template);
+    });
+  }
+  // Pushes every value currently in `settings` into the setup form. Used at first load
+  // AND whenever a template is applied, so the two code paths can never drift apart.
+  function populateSetupFieldsFromSettings(){
+    $("wname").value = settings.name;
+    $("exercises").value = settings.exercises;
+    $("exercisesEn").value = settings.exercisesEn;
+    $("exercisesJa").value = settings.exercisesJa;
+    $("exercisesEs").value = settings.exercisesEs;
+    $("exercisesFr").value = settings.exercisesFr;
+    $("exercisesKo").value = settings.exercisesKo;
+    $("encourage").value = settings.encourage;
+    $("encourageEn").value = settings.encourageEn;
+    $("encourageJa").value = settings.encourageJa;
+    $("encourageEs").value = settings.encourageEs;
+    $("encourageFr").value = settings.encourageFr;
+    $("encourageKo").value = settings.encourageKo;
+    $("voiceOn").checked = !!settings.voice;
+    refreshSteppers();
+    refreshLangButtons();
+    refreshTemplateButtons();
+  }
+  populateSetupFieldsFromSettings();
+
+  document.querySelectorAll(".seg-btn[data-lang]").forEach(function(btn){
     btn.addEventListener("click", function(){
       settings.lang = btn.getAttribute("data-lang");
       refreshLangButtons();
@@ -450,12 +555,58 @@
     });
   });
 
-  var steppers = { work:{min:5,max:600,step:5}, rest:{min:0,max:300,step:5}, sets:{min:1,max:30,step:1},
-    cycles:{min:1,max:20,step:1}, cyclerest:{min:0,max:600,step:5}, prep:{min:0,max:30,step:1} };
-  function refreshSteppers(){
-    Object.keys(steppers).forEach(function(k){ $(k+"Val").textContent = settings[k]; });
+  document.querySelectorAll(".seg-btn[data-template]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var key = btn.getAttribute("data-template");
+      if (key === settings.template) return;
+      askConfirm(templateConfirmText()).then(function(ok){
+        if (!ok) return;
+        mergeTemplateIntoSettings(key);
+        populateSetupFieldsFromSettings();
+        applySetupUiText();
+        updateSummary();
+        refreshHistorySummary();
+        saveSettings();
+      });
+    });
+  });
+
+  // Session-length quick-pick: solves for how many rounds (cycles) fit inside a target
+  // number of minutes, given whatever station count/work/rest/round-rest is already set.
+  // It only ever touches `cycles` - never the stations, their order, or their timing -
+  // so switching length never surprises a coach who already tuned the per-station cues.
+  // Uses floor (not round) so the result never exceeds the target minutes, matching the
+  // "keep it under 30 / under 60" framing these buttons are meant to reinforce.
+  var lastDurationPreset = null; // which preset was last clicked, for a visible highlight only - never persisted or "locked"
+  function refreshDurationButtons(){
+    document.querySelectorAll(".seg-btn[data-duration]").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-duration") === lastDurationPreset);
+    });
   }
-  refreshSteppers();
+  function applyDurationPreset(key, targetMinutes){
+    var targetSec = targetMinutes * 60;
+    var perCycle = settings.sets * settings.work + Math.max(0, settings.sets - 1) * settings.rest + settings.cyclerest;
+    var raw = Math.floor((targetSec - settings.prep + settings.cyclerest) / perCycle);
+    settings.cycles = Math.min(steppers.cycles.max, Math.max(steppers.cycles.min, raw));
+    var actualSec = settings.prep - settings.cyclerest + settings.cycles * perCycle;
+    var actualMin = Math.max(1, Math.round(actualSec / 60));
+    refreshSteppers();
+    updateSummary();
+    saveSettings();
+    lastDurationPreset = key;
+    refreshDurationButtons();
+    // Immediate feedback right where the person clicked - no need to scroll down to the
+    // rounds stepper to confirm anything happened. This is the actual fix for the report
+    // that these buttons "don't do anything": they worked, but gave zero visible signal.
+    $("durationResult").textContent = durationPresetText().result(settings.cycles, actualMin);
+  }
+  var DURATION_MINUTES = { micro: 15, tight: 29, relaxed: 59 };
+  document.querySelectorAll(".seg-btn[data-duration]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var key = btn.getAttribute("data-duration");
+      applyDurationPreset(key, DURATION_MINUTES[key]);
+    });
+  });
 
   document.querySelectorAll("[data-step]").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -664,6 +815,13 @@
     if (!settings.name || settings.name === "Core Training" || settings.name === "核心訓練") {
       $("titleDisplay").textContent = t.appTitle;
     }
+    var dt = durationPresetText();
+    $("durationLabel").textContent = dt.label;
+    $("durationHint").textContent = dt.hint;
+    document.querySelectorAll(".seg-btn[data-duration]").forEach(function(btn){
+      var k = btn.getAttribute("data-duration");
+      btn.textContent = dt[k];
+    });
   }
 
   /* ---------------- Check-in history (personal, stored on this device only) ---------------- */
@@ -876,17 +1034,17 @@
 
   // Fixed phrases in each language. Only the exercise name / counts are dynamic (built below).
   var PHRASES = {
-    zh: { prepIntro:"準備開始", go:"加油", restFallback:"休息一下",
+    zh: { prepIntro:"準備開始", go:"加油", restFallback:"休息一下", stationDone:"完成",
           cycleRestIntro:"這一輪結束，休息一下，準備下一輪", done:"訓練完成，辛苦了" },
-    en: { prepIntro:"Get ready", go:"Go", restFallback:"Take a rest",
+    en: { prepIntro:"Get ready", go:"Go", restFallback:"Take a rest", stationDone:"Done",
           cycleRestIntro:"Round complete. Rest up and get ready for the next round.", done:"Workout complete. Great job." },
-    ja: { prepIntro:"準備してください", go:"頑張って", restFallback:"休憩しましょう",
+    ja: { prepIntro:"準備してください", go:"頑張って", restFallback:"休憩しましょう", stationDone:"完了",
           cycleRestIntro:"1周終了です。休んで次の周に備えましょう。", done:"トレーニング終了です。お疲れ様でした。" },
-    es: { prepIntro:"Prepárate", go:"Vamos", restFallback:"Descansa un momento",
+    es: { prepIntro:"Prepárate", go:"Vamos", restFallback:"Descansa un momento", stationDone:"Listo",
           cycleRestIntro:"Ronda completada. Descansa y prepárate para la siguiente ronda.", done:"Entrenamiento completado. Buen trabajo." },
-    fr: { prepIntro:"Prépare-toi", go:"Allez", restFallback:"Repose-toi un instant",
+    fr: { prepIntro:"Prépare-toi", go:"Allez", restFallback:"Repose-toi un instant", stationDone:"Terminé",
           cycleRestIntro:"Tour terminé. Repose-toi et prépare-toi pour le tour suivant.", done:"Entraînement terminé. Bravo." },
-    ko: { prepIntro:"준비하세요", go:"파이팅", restFallback:"잠깐 쉬세요",
+    ko: { prepIntro:"준비하세요", go:"파이팅", restFallback:"잠깐 쉬세요", stationDone:"완료",
           cycleRestIntro:"한 라운드 끝났어요. 쉬고 다음 라운드 준비하세요.", done:"운동 끝났습니다. 수고하셨어요." }
   };
   function langPack(){ return PHRASES[settings.lang] || PHRASES.en; }
@@ -903,27 +1061,50 @@
 
   // One template per language for "exercise name + set number + sets/cycles left".
   var WORK_INTRO = {
-    zh: function(name,p){ return name + "，第" + p.set + "組，剩下" + p.setsLeftInCycle + "組，剩下" + p.cyclesLeft + "輪"; },
+    zh: function(name,p){ return name + "，" + p.duration + "秒，第" + p.set + "組，剩下" + p.setsLeftInCycle + "組，剩下" + p.cyclesLeft + "輪"; },
     en: function(name,p){
       var sw = p.setsLeftInCycle === 1 ? "set" : "sets", cw = p.cyclesLeft === 1 ? "cycle" : "cycles";
-      return name + ". Set " + p.set + ". " + p.setsLeftInCycle + " " + sw + " left, " + p.cyclesLeft + " " + cw + " left.";
+      return name + ". " + p.duration + " seconds. Set " + p.set + ". " + p.setsLeftInCycle + " " + sw + " left, " + p.cyclesLeft + " " + cw + " left.";
     },
-    ja: function(name,p){ return name + "。第" + p.set + "セット。残り" + p.setsLeftInCycle + "セット、残り" + p.cyclesLeft + "ラウンド。"; },
+    ja: function(name,p){ return name + "。" + p.duration + "秒。第" + p.set + "セット。残り" + p.setsLeftInCycle + "セット、残り" + p.cyclesLeft + "ラウンド。"; },
     es: function(name,p){
       var sw = p.setsLeftInCycle === 1 ? "serie" : "series", cw = p.cyclesLeft === 1 ? "ronda" : "rondas";
-      return name + ". Serie " + p.set + ". Quedan " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
+      return name + ". " + p.duration + " segundos. Serie " + p.set + ". Quedan " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
     },
     fr: function(name,p){
       var sw = p.setsLeftInCycle === 1 ? "série" : "séries", cw = p.cyclesLeft === 1 ? "tour" : "tours";
-      return name + ". Série " + p.set + ". Il reste " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
+      return name + ". " + p.duration + " secondes. Série " + p.set + ". Il reste " + p.setsLeftInCycle + " " + sw + ", " + p.cyclesLeft + " " + cw + ".";
     },
     ko: function(name,p){
-      return name + ". " + p.set + "번째 세트. 남은 세트 " + p.setsLeftInCycle + "개, 남은 라운드 " + p.cyclesLeft + "개.";
+      return name + ". " + p.duration + "초. " + p.set + "번째 세트. 남은 세트 " + p.setsLeftInCycle + "개, 남은 라운드 " + p.cyclesLeft + "개.";
     }
   };
   function workIntroText(p){
     var tpl = WORK_INTRO[settings.lang] || WORK_INTRO.en;
     return tpl(exerciseName(p), p);
+  }
+
+  // "Rest, 15 seconds." / "Round Rest, 90 seconds." etc. Reuses the same phase labels
+  // already shown on screen (uiText().phase), so the spoken label always matches the
+  // label the person is looking at.
+  function phaseDurationText(p){
+    var label = uiText().phase[p.type];
+    var dur = p.duration;
+    var tpl = {
+      zh: label + "，" + dur + "秒", en: label + ". " + dur + " seconds.",
+      ja: label + "。" + dur + "秒。", es: label + ". " + dur + " segundos.",
+      fr: label + ". " + dur + " secondes.", ko: label + ". " + dur + "초."
+    };
+    return tpl[settings.lang] || tpl.en;
+  }
+  // "Halfway, 10 seconds left."
+  function halfwayText(remainSec){
+    var tpl = {
+      zh: "過半，還剩" + remainSec + "秒", en: "Halfway, " + remainSec + " seconds left.",
+      ja: "折り返し、残り" + remainSec + "秒。", es: "Mitad, quedan " + remainSec + " segundos.",
+      fr: "Mi-temps, il reste " + remainSec + " secondes.", ko: "절반 지났어요, " + remainSec + "초 남음."
+    };
+    return tpl[settings.lang] || tpl.en;
   }
 
   // Random encouragement line from whichever list matches the active language,
@@ -944,42 +1125,48 @@
           voicePrefix:"語音提示：", voiceOn:"開啟", voiceOff:"關閉",
           doneTitle:"訓練完成", doneBtn:"回到設定", shareBtn:"分享成果", shareCopied:"已複製！貼給朋友吧",
           doneSummary:function(c,t){ return "完成 " + c + " 輪，共 " + t + " 組，辛苦了！"; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 連續 " + streak + " 天！今天完成《" + name + "》共 " + today + " 組（累計 " + total + " 組，共 " + sessions + " 次訓練）。換你了 💪"; } },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 連續 " + streak + " 天！今天完成《" + name + "》共 " + today + " 組（累計 " + total + " 組，共 " + sessions + " 次訓練）。換你了 💪"; },
+          inviteBtn:"邀請家人朋友", inviteText:function(streak,today,link){ return "剛完成 " + today + " 組訓練，連續第 " + streak + " 天沒間斷，分享給你求鼓勵、求挑戰！如果週末有空，樂意帶你一起去公園健身俱樂部，有免費教練帶隊活動喔～ " + link; } },
     en: { phase:{prep:"Ready",work:"Work",rest:"Rest",cyclerest:"Round Rest",done:"Done"},
           setsLeft:"Sets Left", cyclesLeft:"Cycles Left", pause:"Pause", resume:"Resume",
           nextPrefix:"Up next: ", nextLast:"Final stage", secUnit:"s",
           voicePrefix:"Voice cues: ", voiceOn:"On", voiceOff:"Off",
           doneTitle:"Workout Complete", doneBtn:"Back to Setup", shareBtn:"Share Result", shareCopied:"Copied! Paste it to a friend",
           doneSummary:function(c,t){ return "Finished " + c + " rounds, " + t + " sets total. Great work!"; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "-day streak! Just finished \"" + name + "\" — " + today + " sets today (" + total + " all-time across " + sessions + " workouts). Your turn 💪"; } },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "-day streak! Just finished \"" + name + "\" — " + today + " sets today (" + total + " all-time across " + sessions + " workouts). Your turn 💪"; },
+          inviteBtn:"Invite a Friend", inviteText:function(streak,today,link){ return "Just finished " + today + " sets, " + streak + "-day streak going - sharing it with you for some encouragement (or a challenge)! If you're free this weekend I'd love to bring you to the park fitness club - there's a free coach-led session too! " + link; } },
     ja: { phase:{prep:"準備",work:"運動",rest:"休憩",cyclerest:"ラウンド休憩",done:"終了"},
           setsLeft:"残りセット数", cyclesLeft:"残りラウンド数", pause:"一時停止", resume:"再開",
           nextPrefix:"次は：", nextLast:"最後のステージ", secUnit:"秒",
           voicePrefix:"音声案内：", voiceOn:"オン", voiceOff:"オフ",
           doneTitle:"トレーニング終了", doneBtn:"設定に戻る", shareBtn:"結果をシェア", shareCopied:"コピーしました！友達に送ろう",
           doneSummary:function(c,t){ return c + "ラウンド、合計" + t + "セット完了です。お疲れ様でした！"; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "日連続！「" + name + "」を" + today + "セット完了（通算" + total + "セット、" + sessions + "回のトレーニング）。次はあなたの番 💪"; } },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "日連続！「" + name + "」を" + today + "セット完了（通算" + total + "セット、" + sessions + "回のトレーニング）。次はあなたの番 💪"; },
+          inviteBtn:"友達を誘う", inviteText:function(streak,today,link){ return "今日は" + today + "セット完了、" + streak + "日連続です。応援も挑戦も歓迎！週末時間があれば、一緒に公園フィットネスクラブへ行きませんか？無料のコーチ付きセッションもありますよ！ " + link; } },
     es: { phase:{prep:"Prepárate",work:"Trabajo",rest:"Descanso",cyclerest:"Descanso de ronda",done:"Completado"},
           setsLeft:"Series restantes", cyclesLeft:"Rondas restantes", pause:"Pausa", resume:"Reanudar",
           nextPrefix:"Siguiente: ", nextLast:"Última etapa", secUnit:"s",
           voicePrefix:"Aviso de voz: ", voiceOn:"Activado", voiceOff:"Desactivado",
           doneTitle:"Entrenamiento completado", doneBtn:"Volver a configuración", shareBtn:"Compartir resultado", shareCopied:"¡Copiado! Envíaselo a un amigo",
           doneSummary:function(c,t){ return "Completaste " + c + " rondas, " + t + " series en total. ¡Buen trabajo!"; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 ¡Racha de " + streak + " días! Acabo de completar \"" + name + "\" — " + today + " series hoy (" + total + " en total en " + sessions + " entrenamientos). Te toca 💪"; } },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 ¡Racha de " + streak + " días! Acabo de completar \"" + name + "\" — " + today + " series hoy (" + total + " en total en " + sessions + " entrenamientos). Te toca 💪"; },
+          inviteBtn:"Invitar a un amigo", inviteText:function(streak,today,link){ return "Acabo de completar " + today + " series, racha de " + streak + " días. ¡Te lo comparto para que me animes o me retes! Si estás libre este fin de semana, me encantaría llevarte al club de fitness al aire libre - ¡hay sesión gratuita con entrenador! " + link; } },
     fr: { phase:{prep:"Préparation",work:"Travail",rest:"Repos",cyclerest:"Repos entre tours",done:"Terminé"},
           setsLeft:"Séries restantes", cyclesLeft:"Tours restants", pause:"Pause", resume:"Reprendre",
           nextPrefix:"Ensuite : ", nextLast:"Dernière étape", secUnit:"s",
           voicePrefix:"Indications vocales : ", voiceOn:"Activé", voiceOff:"Désactivé",
           doneTitle:"Entraînement terminé", doneBtn:"Retour aux réglages", shareBtn:"Partager le résultat", shareCopied:"Copié ! Envoie ça à un ami",
           doneSummary:function(c,t){ return c + " tours terminés, " + t + " séries au total. Bravo !"; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + " jours d'affilée ! Je viens de terminer « " + name + " » — " + today + " séries aujourd'hui (" + total + " au total sur " + sessions + " séances). À toi de jouer 💪"; } },
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + " jours d'affilée ! Je viens de terminer « " + name + " » — " + today + " séries aujourd'hui (" + total + " au total sur " + sessions + " séances). À toi de jouer 💪"; },
+          inviteBtn:"Inviter un ami", inviteText:function(streak,today,link){ return "Je viens de terminer " + today + " séries, " + streak + " jours d'affilée. Je te partage ça, encourage-moi ou lance-moi un défi ! Si tu es libre ce week-end, j'aimerais t'emmener au club de fitness en plein air - il y a une séance gratuite avec coach ! " + link; } },
     ko: { phase:{prep:"준비",work:"운동",rest:"휴식",cyclerest:"라운드 휴식",done:"완료"},
           setsLeft:"남은 세트", cyclesLeft:"남은 라운드", pause:"일시정지", resume:"계속",
           nextPrefix:"다음: ", nextLast:"마지막 단계", secUnit:"초",
           voicePrefix:"음성 안내: ", voiceOn:"켜짐", voiceOff:"꺼짐",
           doneTitle:"운동 완료", doneBtn:"설정으로 돌아가기", shareBtn:"결과 공유", shareCopied:"복사했어요! 친구에게 보내보세요",
           doneSummary:function(c,t){ return c + "라운드, 총 " + t + "세트 완료! 수고하셨어요."; },
-          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "일 연속! \"" + name + "\" " + today + "세트 완료 (누적 " + total + "세트, " + sessions + "회 운동). 이제 네 차례 💪"; } }
+          shareText:function(streak,today,total,sessions,name){ return "🔥 " + streak + "일 연속! \"" + name + "\" " + today + "세트 완료 (누적 " + total + "세트, " + sessions + "회 운동). 이제 네 차례 💪"; },
+          inviteBtn:"친구 초대하기", inviteText:function(streak,today,link){ return "오늘 " + today + "세트 완료, " + streak + "일 연속이에요! 응원하거나 도전해보세요. 주말에 시간 되면 공원 피트니스 클럽에 같이 가요. 무료 코치 세션도 있어요! " + link; } }
   };
   function uiText(){ return UI[settings.lang] || UI.en; }
   function voiceNoteText(){
@@ -1064,6 +1251,70 @@
   document.addEventListener("visibilitychange", function(){
     if (wakeLockWanted && document.visibilityState === "visible" && !wakeLock) requestWakeLock();
   });
+  // In-page replacement for window.confirm(): claude.ai's artifact iframe blocks native
+  // confirm()/alert()/prompt() dialogs (they silently return false instead of showing
+  // anything), so a template switch using window.confirm() would quietly fail there even
+  // though it works fine on a self-hosted page. Building the dialog ourselves means it
+  // works identically everywhere.
+  var confirmResolve = null;
+  function askConfirm(message){
+    return new Promise(function(resolve){
+      confirmResolve = resolve;
+      $("confirmMessage").textContent = message;
+      var labels = confirmLabels();
+      $("confirmCancelBtn").textContent = labels.cancel;
+      $("confirmOkBtn").textContent = labels.ok;
+      $("confirmBackdrop").style.display = "flex";
+    });
+  }
+  function closeConfirm(result){
+    $("confirmBackdrop").style.display = "none";
+    if (confirmResolve) { var r = confirmResolve; confirmResolve = null; r(result); }
+  }
+  $("confirmCancelBtn").addEventListener("click", function(){ closeConfirm(false); });
+  $("confirmOkBtn").addEventListener("click", function(){ closeConfirm(true); });
+  function confirmLabels(){
+    var t = {
+      zh: { cancel:"取消", ok:"套用" }, en: { cancel:"Cancel", ok:"Apply" },
+      ja: { cancel:"キャンセル", ok:"適用" }, es: { cancel:"Cancelar", ok:"Aplicar" },
+      fr: { cancel:"Annuler", ok:"Appliquer" }, ko: { cancel:"취소", ok:"적용" }
+    };
+    return t[settings.lang] || t.en;
+  }
+  function templateConfirmText(){
+    var t = {
+      zh: "套用範本會覆蓋目前的動作、口令與秒數設定，確定要套用嗎？",
+      en: "Applying a template will overwrite your current cues and timing settings. Continue?",
+      ja: "テンプレートを適用すると、現在の口令と時間設定が上書きされます。よろしいですか？",
+      es: "Aplicar esta plantilla sobrescribirá tus indicaciones y tiempos actuales. ¿Continuar?",
+      fr: "Appliquer ce modèle remplacera vos consignes et vos temps actuels. Continuer ?",
+      ko: "템플릿을 적용하면 현재 구호와 시간 설정이 덮어써집니다. 계속할까요?"
+    };
+    return t[settings.lang] || t.en;
+  }
+  function durationPresetText(){
+    var t = {
+      zh: { label:"訓練時長", micro:"迷你．約15分鐘", tight:"緊湊．約29分鐘", relaxed:"寬裕．約59分鐘",
+            hint:"只會調整下面的輪數來配合這個時間，動作站和每站秒數不會變。",
+            result:function(cycles,mins){ return "已調整為 " + cycles + " 輪，預估約 " + mins + " 分鐘。"; } },
+      en: { label:"Session Length", micro:"Micro · ~15 min", tight:"Tight · ~29 min", relaxed:"Relaxed · ~59 min",
+            hint:"Only changes the number of rounds below, to fit this time - the stations and their timing stay as set.",
+            result:function(cycles,mins){ return "Set to " + cycles + " rounds, about " + mins + " min."; } },
+      ja: { label:"トレーニング時間", micro:"ミニ・約15分", tight:"短め・約29分", relaxed:"ゆったり・約59分",
+            hint:"この時間に合わせてラウンド数だけ調整します。各ステーションと秒数は変わりません。",
+            result:function(cycles,mins){ return cycles + "ラウンドに設定しました。約" + mins + "分です。"; } },
+      es: { label:"Duración de la sesión", micro:"Mini · ~15 min", tight:"Corta · ~29 min", relaxed:"Relajada · ~59 min",
+            hint:"Solo ajusta el número de rondas para este tiempo - las estaciones y su duración no cambian.",
+            result:function(cycles,mins){ return "Ajustado a " + cycles + " rondas, unos " + mins + " min."; } },
+      fr: { label:"Durée de la séance", micro:"Mini · ~15 min", tight:"Courte · ~29 min", relaxed:"Détendue · ~59 min",
+            hint:"Ajuste seulement le nombre de tours pour ce temps - les stations et leur durée restent les mêmes.",
+            result:function(cycles,mins){ return "Réglé sur " + cycles + " tours, environ " + mins + " min."; } },
+      ko: { label:"운동 시간", micro:"미니 · 약 15분", tight:"짧게 · 약 29분", relaxed:"여유롭게 · 약 59분",
+            hint:"이 시간에 맞춰 라운드 수만 조정됩니다. 스테이션과 각 스테이션 시간은 바뀌지 않습니다.",
+            result:function(cycles,mins){ return cycles + "라운드로 설정했어요, 약 " + mins + "분."; } }
+    };
+    return t[settings.lang] || t.en;
+  }
   function wakeLockNoteText(){
     var t = {
       zh: "此裝置無法自動保持螢幕常亮，請至手機設定調整「自動鎖定時間」，訓練時避免螢幕變暗。",
@@ -1088,6 +1339,7 @@
   var totalDurationSec = 1;
   var elapsedBeforeCurrentSec = 0;
   var lastSpokenCountdownSecond = null;
+  var halfwayAnnounced = false;
   var announcedThisPhase = false;
 
   var ringFg = $("ringFg");
@@ -1122,7 +1374,7 @@
     enterPhase(0, true);
   }
 
-  function enterPhase(i, announceIntro){
+  function enterPhase(i, announceIntro, sayStationDone){
     if (i >= phases.length) { finishWorkout(); return; }
     idx = i;
     var p = phases[idx];
@@ -1149,6 +1401,7 @@
     paused = false;
     running = true;
     lastSpokenCountdownSecond = null;
+    halfwayAnnounced = false;
     announcedThisPhase = false;
     $("playPauseBtn").textContent = ui.pause;
 
@@ -1156,10 +1409,16 @@
     updateRing(1);
 
     if (announceIntro !== false){
-      if (p.type === "prep") speak(langPack().prepIntro);
-      else if (p.type === "work") speak(workIntroText(p));
-      else if (p.type === "rest") speak(restIntroText());
-      else if (p.type === "cyclerest") speak(langPack().cycleRestIntro);
+      // "Done" caps off the station that just finished naturally (not a manual skip),
+      // spoken as the first item of THIS phase's announce() call so it plays in one
+      // unbroken breath with the new phase's cue instead of getting cancelled by it.
+      var introItems = [];
+      if (sayStationDone) introItems.push(langPack().stationDone);
+      if (p.type === "prep") introItems.push(phaseDurationText(p));
+      else if (p.type === "work") introItems.push(workIntroText(p));
+      else if (p.type === "rest") introItems.push(phaseDurationText(p), restIntroText());
+      else if (p.type === "cyclerest") introItems.push(phaseDurationText(p), langPack().cycleRestIntro);
+      announce(introItems);
       announcedThisPhase = true;
     }
 
@@ -1174,12 +1433,19 @@
     var remainMs = phaseEnd - Date.now();
     if (remainMs <= 0){
       elapsedBeforeCurrentSec += p.duration;
-      enterPhase(idx + 1, true);
+      enterPhase(idx + 1, true, true); // true = this phase ended naturally, so say "Done" first
       return;
     }
     var remainSec = Math.ceil(remainMs / 1000);
     updateTimeDisplay(remainSec);
     updateRing(remainMs / phaseDurationMs);
+
+    // Halfway check-in - skipped if the halfway point falls inside the final countdown
+    // window anyway (short phases), so it never talks over the "Go, 5, 4, 3..." cue.
+    if (!halfwayAnnounced && remainMs <= phaseDurationMs / 2 && remainSec > COUNTDOWN_WINDOW){
+      halfwayAnnounced = true;
+      speak(halfwayText(remainSec));
+    }
 
     if (remainSec <= COUNTDOWN_WINDOW && remainSec >= 1 && remainSec !== lastSpokenCountdownSecond){
       lastSpokenCountdownSecond = remainSec;
@@ -1207,6 +1473,7 @@
 
   var lastShareText = "";
   var lastBriefText = "";
+  var lastInviteText = "";
   var sessionStartTs = Date.now();
   function finishWorkout(){
     clearInterval(tickHandle);
@@ -1219,6 +1486,8 @@
     $("doneSummary").textContent = ui.doneSummary(settings.cycles, totalSets);
     $("restartBtn").textContent = ui.doneBtn;
     $("shareBtn").textContent = ui.shareBtn;
+    $("inviteBtn").textContent = ui.inviteBtn;
+    $("inviteBtn").style.display = (settings.template === "park") ? "" : "none";
 
     var logged = logSession(totalSets);
     var history = logged.history;
@@ -1230,6 +1499,9 @@
       "<span>Σ <b>" + allTimeSets + "</b> · <b>" + history.length + "</b></span>";
     lastShareText = ui.shareText(streak, totalSets, allTimeSets, history.length, settings.name || setupText().appTitle);
     lastBriefText = buildBrief(logged.record, history);
+    // Deep-links back into the Park template so whoever opens it lands in the right context.
+    var inviteLink = window.location.href.split("?")[0].split("#")[0] + "?t=park";
+    lastInviteText = ui.inviteText(streak, totalSets, inviteLink);
 
     refreshHistorySummary();
     showScreen("done");
@@ -1321,6 +1593,9 @@
   });
   $("briefBtn").addEventListener("click", function(){
     shareOrCopy(lastBriefText, $("briefBtn"), "Copied! Paste it into an email or note");
+  });
+  $("inviteBtn").addEventListener("click", function(){
+    shareOrCopy(lastInviteText, $("inviteBtn"), uiText().shareCopied);
   });
 
   /* ---------------- Backup & Restore (English only) ---------------- */
